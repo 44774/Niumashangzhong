@@ -18,6 +18,8 @@ import type {
   ShiftTemplate,
   ShiftTemplateInput,
   User,
+  WeatherLocation,
+  HolidayMap,
   WeatherForecast,
   Workspace,
 } from "../typings/api";
@@ -33,6 +35,18 @@ import {
 } from "./local-store";
 import { addDaysLocal, cycleSlots, instanceTimes, intervalsOverlap, normalizeSnapshot } from "../utils/local-schedule";
 import { formatTimeRange } from "../utils/format";
+import { fetchOpenMeteo } from "../utils/open-meteo";
+import { getDefaultLocation, normalizeLocation, setDefaultLocation } from "../stores/location";
+import {
+  isOvertime,
+  mergeHolidayMaps,
+  parseHolidayYear,
+  readHolidayCache,
+  sliceHolidayMap,
+  writeHolidayCache,
+} from "../utils/holiday";
+
+const HOLIDAY_API = "https://timor.tech/api/holiday/year/";
 
 const LOCAL_WORKSPACE_ID = "local-workspace";
 
@@ -108,42 +122,6 @@ function toInstance(doc: LocalInstance): ScheduleInstance {
   };
 }
 
-function mockWeather(from: string, to: string): WeatherForecast[] {
-  const conditions = [
-    { code: "sunny", text: "晴", rain: 0 },
-    { code: "cloudy", text: "多云", rain: 10 },
-    { code: "overcast", text: "阴", rain: 30 },
-    { code: "rain", text: "小雨", rain: 60 },
-    { code: "thunderstorm", text: "雷阵雨", rain: 90 },
-    { code: "windy", text: "大风", rain: 20 },
-  ];
-  const result: WeatherForecast[] = [];
-  let cursor = from;
-  let index = 0;
-  while (cursor <= to && index < 31) {
-    const cond = conditions[index % conditions.length];
-    if (!cond) break;
-    const base = index % 5;
-    result.push({
-      date: cursor,
-      conditionCode: cond.code,
-      conditionText: cond.text,
-      temperatureMin: 24 + base,
-      temperatureMax: 29 + base,
-      humidityPercent: 55 + ((index * 7) % 30),
-      precipitationProbability: cond.rain + (index % 3) * 5,
-      windDirection: ["东风", "南风", "西风", "北风"][index % 4] ?? null,
-      windLevel: `${1 + (index % 4)}级`,
-      airQuality: ["优", "良", "轻度污染"][index % 3] ?? null,
-      warningCodes: cond.code === "thunderstorm" ? ["storm"] : [],
-      updatedAt: new Date().toISOString(),
-    });
-    cursor = addDaysLocal(cursor, 1);
-    index += 1;
-  }
-  return result;
-}
-
 export const api = {
   async loginDev(displayName?: string): Promise<AuthResponse> {
     const user = localUser(displayName);
@@ -216,11 +194,14 @@ export const api = {
     const docs = read<LocalInstance[]>(LOCAL_SCHEDULES_KEY, []);
     const doc = docs.find((d) => d.id === id);
     if (!doc) throw new ApiError(404, "NOT_FOUND", "排班不存在");
-    const weather = mockWeather(doc.businessDate, doc.businessDate)[0] ?? null;
+    const weatherList = await this.weather(doc.businessDate, doc.businessDate);
+    const weather = weatherList[0] ?? null;
+    const holidayMap = await ensureLocalHoliday(doc.businessDate, doc.businessDate);
     return {
       ...toInstance(doc),
       weather,
       pendingChange: null,
+      overtime: isOvertime(holidayMap, doc.businessDate, doc.kind),
       history: (doc.history ?? []).map((h) => ({
         version: h.version,
         snapshot: h.snapshot,
@@ -421,8 +402,27 @@ export const api = {
     return status ? list.filter((c) => c.status === status) : list;
   },
 
-  async weather(from: string, to: string, _city?: string): Promise<WeatherForecast[]> {
-    return mockWeather(from, to);
+  async weather(
+    from: string,
+    to: string,
+    location?: WeatherLocation | string,
+  ): Promise<WeatherForecast[]> {
+    const loc =
+      normalizeLocation(location) ??
+      getDefaultLocation() ?? { name: "深圳", latitude: 22.5431, longitude: 114.0579 };
+    return fetchOpenMeteo(loc, from, to);
+  },
+
+  async holidayRange(from: string, to: string): Promise<HolidayMap> {
+    const map = await ensureLocalHoliday(from, to);
+    return sliceHolidayMap(map, from, to);
+  },
+
+  async updateLocation(location: WeatherLocation): Promise<User> {
+    setDefaultLocation(location);
+    const user = { ...(getUser() ?? localUser()), defaultLocation: location };
+    setLocalSession(user, localWorkspace());
+    return user;
   },
 
   async notificationPreferences(): Promise<NotificationPreferences> {
@@ -447,7 +447,8 @@ export const api = {
       .filter((d) => d.businessDate >= input.rangeStart && d.businessDate <= input.rangeEnd)
       .sort((a, b) => (a.businessDate < b.businessDate ? -1 : 1))
       .map(toInstance);
-    const weatherList = mockWeather(input.rangeStart, input.rangeEnd);
+    const weatherList = await this.weather(input.rangeStart, input.rangeEnd);
+    const holidayMap = await ensureLocalHoliday(input.rangeStart, input.rangeEnd);
     const privacy = {
       showDisplayName: Boolean(input.privacyOptions?.showDisplayName),
       showTime: Boolean(input.privacyOptions?.showTime),
@@ -476,7 +477,8 @@ export const api = {
                 temperatureMax: forecast.temperatureMax,
               }
             : null,
-      };
+      overtime: isOvertime(holidayMap, row.businessDate, row.kind) || undefined,
+    };
     });
     return {
       id: genId("sh"),
@@ -490,6 +492,43 @@ export const api = {
     };
   },
 };
+
+function fetchHolidayYear(year: number): Promise<HolidayMap> {
+  return new Promise((resolve, reject) => {
+    wx.request({
+      url: `${HOLIDAY_API}${year}`,
+      method: "GET",
+      success: (res) => {
+        if (res.statusCode >= 200 && res.statusCode < 300) {
+          resolve(parseHolidayYear(year, res.data));
+        } else {
+          reject(new Error(`节假日接口返回 ${res.statusCode}`));
+        }
+      },
+      fail: () => reject(new Error("节假日接口连接失败")),
+    });
+  });
+}
+
+async function ensureLocalHoliday(from: string, to: string): Promise<HolidayMap> {
+  const cache = readHolidayCache();
+  const fromYear = Math.max(2019, Number(from.slice(0, 4)));
+  const toYear = Number(to.slice(0, 4));
+  let merged = cache;
+  for (let year = fromYear; year <= toYear; year += 1) {
+    const prefix = `${year}-`;
+    const hasYear = Object.keys(merged).some((date) => date.startsWith(prefix));
+    if (hasYear) continue;
+    try {
+      const map = await fetchHolidayYear(year);
+      merged = mergeHolidayMaps(merged, map);
+      writeHolidayCache(merged);
+    } catch {
+      // 单个年份失败不影响其余年份
+    }
+  }
+  return merged;
+}
 
 function assertNoConflict(
   docs: LocalInstance[],

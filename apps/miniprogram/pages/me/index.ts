@@ -48,6 +48,10 @@ Page({
     wx.switchTab({ url: "/pages/notify/index" });
   },
 
+  goLocation() {
+    wx.navigateTo({ url: "/pages/location/index" });
+  },
+
   showAbout() {
     wx.showModal({
       title: "关于工作日历",

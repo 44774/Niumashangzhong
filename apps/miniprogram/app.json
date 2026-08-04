@@ -10,8 +10,16 @@
     "pages/share/index",
     "pages/shift-manage/index",
     "pages/change-records/index",
-    "pages/share-settings/index"
+    "pages/share-settings/index",
+    "pages/cycle-create/index",
+    "pages/location/index"
   ],
+  "requiredPrivateInfos": ["getLocation", "chooseLocation"],
+  "permission": {
+    "scope.userLocation": {
+      "desc": "用于获取当前位置以查询天气"
+    }
+  },
   "window": {
     "navigationBarBackgroundColor": "#F5F9FF",
     "navigationBarTextStyle": "black",

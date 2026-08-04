@@ -8,6 +8,7 @@ export function toUser(doc: any) {
     timezone: doc.timezone,
     locale: "zh-CN",
     defaultCity: doc.defaultCity ?? null,
+    defaultLocation: doc.defaultLocation ?? null,
   };
 }
 

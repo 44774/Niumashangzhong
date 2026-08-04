@@ -15,6 +15,14 @@ export type ConflictType = "overlap" | "insufficient_rest" | "coverage_gap" | "p
 export type ConflictSeverity = "warning" | "error";
 export type AsyncJobStatus = "pending" | "running" | "completed" | "failed";
 export type NotificationStatus = "pending" | "processing" | "sent" | "failed" | "cancelled";
+export type HolidayType = "holiday" | "workday";
+export type HolidayMap = Record<string, HolidayType>;
+
+export interface WeatherLocation {
+  name: string;
+  latitude: number;
+  longitude: number;
+}
 
 export interface User {
   id: string;
@@ -23,6 +31,7 @@ export interface User {
   timezone: string;
   locale: string;
   defaultCity: string | null;
+  defaultLocation?: WeatherLocation | null;
 }
 
 export interface Workspace {
@@ -113,6 +122,7 @@ export interface ScheduleInstance {
 export interface ScheduleDetail extends ScheduleInstance {
   weather: WeatherForecast | null;
   pendingChange: ChangeRequest | null;
+  overtime?: boolean;
   history: Array<{
     version: number;
     snapshot: ShiftSnapshot;
@@ -201,6 +211,7 @@ export interface NotificationPreferences {
   weatherEnabled: boolean;
   scheduleChangesEnabled: boolean;
   approvalEnabled: boolean;
+  holidayOvertimeEnabled?: boolean;
   quietHours: { start: string; end: string } | null;
   channels: Record<string, boolean>;
 }
@@ -230,6 +241,7 @@ export interface ShareSnapshotEntry {
   location: string | null;
   note: string | null;
   weather: Pick<WeatherForecast, "conditionText" | "conditionCode" | "temperatureMin" | "temperatureMax"> | null;
+  overtime?: boolean;
 }
 
 export interface ShareSnapshot {

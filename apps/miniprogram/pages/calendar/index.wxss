@@ -33,6 +33,10 @@
   border: none;
 }
 
+.month-bar .row {
+  gap: 12rpx;
+}
+
 .today-main {
   margin-top: 20rpx;
 }

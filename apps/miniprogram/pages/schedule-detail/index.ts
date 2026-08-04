@@ -2,6 +2,8 @@ import { api } from "../../services/api";
 import type { ScheduleDetail } from "../../typings/api";
 import { formatDateCN, todayString, weekdayCN } from "../../utils/date";
 import { durationLabel, formatTimeRange } from "../../utils/format";
+import { ensureHolidayRange } from "../../services/holiday-cache";
+import { isOvertime } from "../../utils/holiday";
 
 Page({
   data: {
@@ -16,6 +18,7 @@ Page({
     error: false,
     errorMessage: "",
     weatherError: false,
+    overtime: false,
   },
 
   onLoad(query: Record<string, string | undefined>) {
@@ -44,6 +47,9 @@ Page({
         detail = await api.scheduleDetail(list[0].id);
       }
       const snapshot = detail.shiftSnapshot;
+      const holidayMap = await ensureHolidayRange(detail.businessDate, detail.businessDate);
+      const overtime =
+        detail.overtime ?? isOvertime(holidayMap, detail.businessDate, detail.kind);
       const history = detail.history.map((h) => {
         const d = new Date(h.createdAt);
         const pad = (n: number) => String(n).padStart(2, "0");
@@ -60,6 +66,7 @@ Page({
         location: detail.locationSnapshot?.name ?? "",
         note: detail.note ?? "",
         weatherError: !detail.weather,
+        overtime,
         loading: false,
       });
     } catch (err) {

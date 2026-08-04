@@ -13,6 +13,24 @@
     <text class="text-tertiary range-desc">{{rangeStart}} 至 {{rangeEnd}}</text>
   </view>
 
+  <view class="card" wx:if="{{rangeIndex === 3}}">
+    <text class="title-card">自定义日期</text>
+    <view class="row custom-row">
+      <view class="custom-field">
+        <text class="field-label">开始日期</text>
+        <picker mode="date" value="{{customStart}}" bindchange="onCustomStartChange">
+          <view class="picker-box">{{customStart}}</view>
+        </picker>
+      </view>
+      <view class="custom-field">
+        <text class="field-label">结束日期</text>
+        <picker mode="date" value="{{customEnd}}" bindchange="onCustomEndChange">
+          <view class="picker-box">{{customEnd}}</view>
+        </picker>
+      </view>
+    </view>
+  </view>
+
   <view class="card">
     <text class="title-card">分享内容</text>
     <view class="switch-row" wx:for="{{privacyItems}}" wx:key="key">
@@ -35,7 +53,26 @@
   />
   <block wx:else>
     <view class="card" wx:if="{{!posterPath}}">
-      <text class="title-card">内容预览</text>
+      <text class="title-card">{{isMultiDay ? '日历预览' : '内容预览'}}</text>
+      <block wx:if="{{isMultiDay}}">
+        <view class="grid-week">
+          <text wx:for="{{['一','二','三','四','五','六','日']}}" wx:key="*this" class="grid-week-cell">{{item}}</text>
+        </view>
+        <view class="grid-cells">
+          <view
+            wx:for="{{previewGrid}}"
+            wx:key="date"
+            class="grid-cell {{item.inRange ? '' : 'dim'}}"
+          >
+            <text class="grid-day" wx:if="{{item.inRange}}">{{item.day}}</text>
+            <view wx:if="{{item.shiftName}}" class="grid-shift" style="background: {{item.color}}1A; color: {{item.color}};">
+              <text>{{item.shortName}}</text>
+              <text wx:if="{{item.overtime}}" class="grid-ot">加</text>
+            </view>
+            <text wx:if="{{item.weatherText}}" class="grid-weather">{{item.weatherText}}</text>
+          </view>
+        </view>
+      </block>
       <view wx:for="{{previewEntries}}" wx:key="date" class="preview-row">
         <view class="preview-date">
           <text class="preview-day">{{item.day}}</text>

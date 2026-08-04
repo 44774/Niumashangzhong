@@ -1,4 +1,4 @@
-import { getWorkspaceId, setSession } from "../stores/session";
+import { getWorkspace, getWorkspaceId, setSession } from "../stores/session";
 import type {
   AuthResponse,
   ChangeRequest,
@@ -16,8 +16,11 @@ import type {
   ShiftTemplateInput,
   User,
   WeatherForecast,
+  WeatherLocation,
+  HolidayMap,
   Workspace,
 } from "../typings/api";
+import { getDefaultLocation } from "../stores/location";
 import { callCloud } from "./cloud";
 
 const CLOUD_TOKEN = "cloud-token";
@@ -95,8 +98,24 @@ export const api = {
     return ws<ChangeRequest[]>("change.list", status ? { status } : {});
   },
 
-  async weather(from: string, to: string, city?: string): Promise<WeatherForecast[]> {
-    return ws<WeatherForecast[]>("weather.get", { from, to, city: city ?? "" });
+  async weather(
+    from: string,
+    to: string,
+    location?: WeatherLocation | string,
+  ): Promise<WeatherForecast[]> {
+    const loc = typeof location === "string" ? undefined : (location ?? getDefaultLocation() ?? undefined);
+    return ws<WeatherForecast[]>("weather.get", { from, to, location: loc });
+  },
+
+  async holidayRange(from: string, to: string): Promise<HolidayMap> {
+    return ws<HolidayMap>("holiday.getRange", { from, to });
+  },
+
+  async updateLocation(location: WeatherLocation): Promise<User> {
+    const user = await ws<User>("user.updateLocation", { location });
+    const workspace = getWorkspace();
+    if (workspace) setSession(CLOUD_TOKEN, user, workspace, "cloud");
+    return user;
   },
 
   async notificationPreferences(): Promise<NotificationPreferences> {

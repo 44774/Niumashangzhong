@@ -18,6 +18,9 @@ import type {
   Workspace,
 } from "../typings/api";
 import { request } from "./request";
+import type { HolidayMap, WeatherLocation } from "../typings/api";
+import { readHolidayCache, sliceHolidayMap } from "../utils/holiday";
+import { setDefaultLocation } from "../stores/location";
 
 export const api = {
   loginDev(displayName: string): Promise<AuthResponse> {
@@ -76,8 +79,9 @@ export const api = {
     return request(`/change-requests${status ? `?status=${status}` : ""}`);
   },
 
-  weather(from: string, to: string, city?: string): Promise<WeatherForecast[]> {
-    return request(`/weather?from=${from}&to=${to}${city ? `&city=${encodeURIComponent(city)}` : ""}`);
+  weather(from: string, to: string, city?: string | WeatherLocation): Promise<WeatherForecast[]> {
+    const cityName = typeof city === "string" ? city : city?.name;
+    return request(`/weather?from=${from}&to=${to}${cityName ? `&city=${encodeURIComponent(cityName)}` : ""}`);
   },
 
   notificationPreferences(): Promise<NotificationPreferences> {
@@ -90,5 +94,15 @@ export const api = {
 
   createShareSnapshot(input: ShareSnapshotInput): Promise<ShareSnapshot> {
     return request("/share-snapshots", { method: "POST", data: input });
+  },
+
+  holidayRange(from: string, to: string): Promise<HolidayMap> {
+    return Promise.resolve(sliceHolidayMap(readHolidayCache(), from, to));
+  },
+
+  async updateLocation(location: WeatherLocation): Promise<User> {
+    setDefaultLocation(location);
+    const me = await this.me();
+    return { ...me, defaultLocation: location };
   },
 };

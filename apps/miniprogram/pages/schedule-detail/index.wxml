@@ -21,6 +21,7 @@
           size="lg"
         />
         <text class="hero-status" wx:if="{{detail.status === 'pending_approval'}}">待审批</text>
+        <text class="hero-status ot-status" wx:if="{{overtime}}">加班</text>
       </view>
       <text class="hero-time" wx:if="{{timeText}}">{{timeText}}</text>
       <text class="hero-rest" wx:else>休息日 · 无上下班时间</text>

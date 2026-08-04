@@ -1,11 +1,13 @@
 import { db, requireWorkspace } from "./db";
 import { docId, nowIso } from "./util";
+import { readHolidayRange } from "./holiday";
 
 const DEFAULTS = {
   shiftReminders: [15],
   weatherEnabled: true,
   scheduleChangesEnabled: true,
   approvalEnabled: true,
+  holidayOvertimeEnabled: true,
   quietHours: null,
   channels: { wechat: true },
 };
@@ -21,6 +23,7 @@ export async function get(openid: string, payload: { workspaceId: string }) {
         scheduleChangesEnabled:
           res.data.scheduleChangesEnabled ?? DEFAULTS.scheduleChangesEnabled,
         approvalEnabled: res.data.approvalEnabled ?? DEFAULTS.approvalEnabled,
+        holidayOvertimeEnabled: res.data.holidayOvertimeEnabled ?? DEFAULTS.holidayOvertimeEnabled,
         quietHours: res.data.quietHours ?? DEFAULTS.quietHours,
         channels: res.data.channels ?? DEFAULTS.channels,
       };
@@ -42,6 +45,7 @@ export async function save(openid: string, payload: { workspaceId: string; prefs
     weatherEnabled: Boolean(prefs.weatherEnabled ?? true),
     scheduleChangesEnabled: Boolean(prefs.scheduleChangesEnabled ?? true),
     approvalEnabled: Boolean(prefs.approvalEnabled ?? true),
+    holidayOvertimeEnabled: Boolean(prefs.holidayOvertimeEnabled ?? true),
     quietHours: prefs.quietHours ?? null,
     channels: prefs.channels ?? { wechat: true },
   };
@@ -62,6 +66,11 @@ export async function rebuildJobs(openid: string, workspaceId: string, instance:
     .where({ instanceId: instance._id, status: "pending" })
     .remove();
   if (!instance.startsAt) return;
+  const holidayMap = await readHolidayRange(instance.businessDate, instance.businessDate);
+  const overtime =
+    prefs.holidayOvertimeEnabled !== false &&
+    instance.kind !== "rest" &&
+    holidayMap[instance.businessDate] === "holiday";
   const start = new Date(instance.startsAt);
   for (const minutes of prefs.shiftReminders ?? []) {
     const triggerAt = new Date(start.getTime() - minutes * 60_000);
@@ -81,6 +90,7 @@ export async function rebuildJobs(openid: string, workspaceId: string, instance:
           endTime: instance.shiftSnapshot?.endTime,
           reminderMinutes: minutes,
           version: instance.version,
+          overtime,
         },
         status: "pending",
         createdAt: nowIso(),
@@ -100,6 +110,7 @@ export async function rebuildJobs(openid: string, workspaceId: string, instance:
           businessDate: instance.businessDate,
           shiftName: instance.shiftSnapshot?.name,
           version: instance.version,
+          overtime,
         },
         status: "pending",
         createdAt: nowIso(),

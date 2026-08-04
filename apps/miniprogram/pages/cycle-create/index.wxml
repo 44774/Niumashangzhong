@@ -1,0 +1,68 @@
+<view class="page">
+  <block wx:if="{{loading}}">
+    <view class="loading-mask">加载中…</view>
+  </block>
+  <error-state wx:elif="{{error}}" message="{{errorMessage}}" bind:retry="load" />
+  <block wx:else>
+    <view class="card">
+      <text class="title-card">循环规则</text>
+      <text class="field-label start-label">起始日期</text>
+      <picker mode="date" value="{{startDate}}" bindchange="onStartDateChange">
+        <view class="picker-box">{{startDate}}</view>
+      </picker>
+
+      <view class="row-between">
+        <text class="title-card sequence-title">班次序列</text>
+        <button class="btn-secondary add-seq" bindtap="addSequence" wx:if="{{sequence.length < 14}}">+ 添加</button>
+      </view>
+      <text class="field-desc">按顺序循环，例如：早、早、晚、晚、休、休</text>
+      <view class="seq-list">
+        <view class="row seq-row" wx:for="{{sequence}}" wx:key="index">
+          <text class="seq-index">{{index + 1}}</text>
+          <picker range="{{templateNames}}" value="{{item.templateIndex}}" data-index="{{index}}" bindchange="onSequenceChange">
+            <view class="picker-box seq-picker">{{item.name || '请选择班次'}}</view>
+          </picker>
+          <text class="seq-remove" data-index="{{index}}" bindtap="removeSequence">×</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="card">
+      <text class="title-card">结束策略</text>
+      <view class="strategy-options">
+        <view class="strategy-option {{endStrategy === 'open' ? 'active' : ''}}" data-value="open" bindtap="onStrategyChange">长期（生成90天）</view>
+        <view class="strategy-option {{endStrategy === 'endDate' ? 'active' : ''}}" data-value="endDate" bindtap="onStrategyChange">指定结束日期</view>
+        <view class="strategy-option {{endStrategy === 'days' ? 'active' : ''}}" data-value="days" bindtap="onStrategyChange">指定天数</view>
+      </view>
+      <block wx:if="{{endStrategy === 'endDate'}}">
+        <text class="field-label">结束日期</text>
+        <picker mode="date" value="{{endDate}}" bindchange="onEndDateChange">
+          <view class="picker-box">{{endDate}}</view>
+        </picker>
+      </block>
+      <block wx:if="{{endStrategy === 'days'}}">
+        <text class="field-label">生成天数（1-366）</text>
+        <input class="field-input" type="number" value="{{days}}" bindinput="onDaysInput" />
+      </block>
+    </view>
+
+    <view class="card" wx:if="{{preview.length > 0}}">
+      <text class="title-card">生成预览（前 {{preview.length}} 天）</text>
+      <view class="preview-list">
+        <view class="row preview-row" wx:for="{{preview}}" wx:key="date">
+          <text class="preview-date">{{item.date.slice(5)}}</text>
+          <shift-badge
+            name="{{item.name}}"
+            short-name="{{item.name}}"
+            color="{{item.color}}"
+            size="sm"
+          />
+        </view>
+      </view>
+    </view>
+
+    <button class="btn-primary btn-block" loading="{{submitting}}" bindtap="submit">
+      生成循环排班
+    </button>
+  </block>
+</view>

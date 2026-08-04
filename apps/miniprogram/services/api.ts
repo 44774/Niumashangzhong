@@ -33,13 +33,20 @@ export const api = {
   createChangeRequest: (input: Parameters<typeof cloudApi.createChangeRequest>[0]) =>
     current().createChangeRequest(input),
   changeRequests: (status?: string) => current().changeRequests(status),
-  weather: (from: string, to: string, city?: string) => current().weather(from, to, city),
+  weather: (
+    from: string,
+    to: string,
+    location?: Parameters<typeof cloudApi.weather>[2],
+  ) => current().weather(from, to, location),
   notificationPreferences: () => current().notificationPreferences(),
   saveNotificationPreferences: (
     prefs: Parameters<typeof cloudApi.saveNotificationPreferences>[0],
   ) => current().saveNotificationPreferences(prefs),
   createShareSnapshot: (input: Parameters<typeof cloudApi.createShareSnapshot>[0]) =>
     current().createShareSnapshot(input),
+  holidayRange: (from: string, to: string) => current().holidayRange(from, to),
+  updateLocation: (location: Parameters<typeof cloudApi.updateLocation>[0]) =>
+    current().updateLocation(location),
 };
 
 /** 本地登录：数据仅保存在当前设备，不经过云端 */

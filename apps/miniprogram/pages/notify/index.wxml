@@ -28,6 +28,13 @@
       </view>
       <switch checked="{{prefs.scheduleChangesEnabled}}" bindchange="onScheduleChangeToggle" color="#1F6FEB" />
     </view>
+    <view class="row-between switch-row">
+      <view>
+        <text class="switch-title">节假日加班提醒</text>
+        <text class="switch-desc">法定节假日上班时在提醒中标注“加班”</text>
+      </view>
+      <switch checked="{{prefs.holidayOvertimeEnabled}}" bindchange="onHolidayToggle" color="#1F6FEB" />
+    </view>
   </view>
 
   <view class="card">

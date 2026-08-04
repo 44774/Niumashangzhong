@@ -1,0 +1,32 @@
+.location-box {
+  background: var(--wc-color-surface-subtle);
+  border-radius: var(--wc-radius-md);
+  padding: 32rpx 24rpx;
+  margin-top: 20rpx;
+}
+
+.location-name {
+  display: block;
+  font-size: 34rpx;
+  font-weight: 700;
+}
+
+.location-coord {
+  display: block;
+  color: var(--wc-color-text-tertiary);
+  font-size: 24rpx;
+  margin-top: 8rpx;
+}
+
+.location-empty {
+  color: var(--wc-color-text-tertiary);
+  font-size: 26rpx;
+}
+
+.location-hint {
+  display: block;
+  margin-top: 24rpx;
+  color: var(--wc-color-text-tertiary);
+  font-size: 22rpx;
+  line-height: 1.6;
+}

@@ -14,6 +14,8 @@ import {
   weekdayCN,
 } from "../../utils/date";
 import { durationLabel, formatTimeRange } from "../../utils/format";
+import { ensureHolidayRange } from "../../services/holiday-cache";
+import { isOvertime } from "../../utils/holiday";
 
 Page({
   data: {
@@ -68,9 +70,10 @@ Page({
       const cells = this.data.cells;
       const from = cells[0]?.date ?? addDays(today, -7);
       const to = cells[cells.length - 1]?.date ?? addDays(today, 40);
-      const [templates, schedules] = await Promise.all([
+      const [templates, schedules, holidayMap] = await Promise.all([
         api.shiftTemplates(true),
         api.schedules(from, to),
+        ensureHolidayRange(from, to),
       ]);
       const shiftMap: Record<string, CalendarDayShift[]> = {};
       for (const item of schedules) {
@@ -79,6 +82,7 @@ Page({
           name: item.shiftSnapshot.name,
           shortName: item.shiftSnapshot.shortName,
           color: item.shiftSnapshot.color,
+          overtime: isOvertime(holidayMap, item.businessDate, item.kind) || undefined,
         });
         shiftMap[item.businessDate] = list;
       }
@@ -137,6 +141,10 @@ Page({
   goToday() {
     this.initMonth();
     this.load();
+  },
+
+  goCycle() {
+    wx.navigateTo({ url: "/pages/cycle-create/index" });
   },
 
   onTouchStart(event: WechatMiniprogram.TouchEvent) {

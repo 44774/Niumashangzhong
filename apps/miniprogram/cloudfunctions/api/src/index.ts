@@ -9,6 +9,8 @@ import * as weather from "./weather";
 import * as notify from "./notify";
 import * as share from "./share";
 import { seedDemo } from "./seed";
+import * as holiday from "./holiday";
+import * as user from "./user";
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV as unknown as string });
 
@@ -59,6 +61,12 @@ exports.main = async (event: any) => {
         return ok(await change.list(openid, payload));
       case "weather.get":
         return ok(await weather.get(openid, payload));
+      case "holiday.sync":
+        return ok(await holiday.sync(openid, payload));
+      case "holiday.getRange":
+        return ok(await holiday.getRange(openid, payload));
+      case "user.updateLocation":
+        return ok(await user.updateLocation(openid, payload));
       case "notify.get":
         return ok(await notify.get(openid, payload));
       case "notify.save":

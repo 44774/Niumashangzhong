@@ -1,0 +1,103 @@
+.start-label {
+  margin-top: 20rpx;
+}
+
+.picker-box {
+  background: var(--wc-color-surface-subtle);
+  border-radius: var(--wc-radius-md);
+  height: 88rpx;
+  line-height: 88rpx;
+  padding: 0 24rpx;
+  font-size: 28rpx;
+}
+
+.sequence-title {
+  margin-top: 28rpx;
+}
+
+.add-seq {
+  height: 64rpx;
+  line-height: 64rpx;
+  font-size: 24rpx;
+  padding: 0 20rpx;
+}
+
+.field-desc {
+  display: block;
+  color: var(--wc-color-text-tertiary);
+  font-size: 24rpx;
+  margin: 8rpx 0 16rpx;
+}
+
+.seq-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.seq-row {
+  gap: 16rpx;
+}
+
+.seq-index {
+  width: 48rpx;
+  height: 48rpx;
+  border-radius: 50%;
+  background: var(--wc-color-surface-subtle);
+  color: var(--wc-color-text-secondary);
+  text-align: center;
+  line-height: 48rpx;
+  font-size: 24rpx;
+}
+
+.seq-picker {
+  flex: 1;
+  height: 80rpx;
+  line-height: 80rpx;
+}
+
+.seq-remove {
+  color: var(--wc-color-semantic-danger);
+  font-size: 40rpx;
+  width: 56rpx;
+  text-align: center;
+}
+
+.strategy-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+  margin: 20rpx 0;
+}
+
+.strategy-option {
+  padding: 14rpx 24rpx;
+  border-radius: var(--wc-radius-pill);
+  background: var(--wc-color-surface-subtle);
+  color: var(--wc-color-text-secondary);
+  font-size: 26rpx;
+}
+
+.strategy-option.active {
+  background: var(--wc-color-brand-primary);
+  color: var(--wc-color-text-inverse);
+  font-weight: 600;
+}
+
+.preview-list {
+  max-height: 480rpx;
+  overflow-y: auto;
+  margin-top: 12rpx;
+}
+
+.preview-row {
+  gap: 20rpx;
+  padding: 10rpx 0;
+  border-bottom: 1rpx solid var(--wc-color-border-default);
+}
+
+.preview-date {
+  width: 110rpx;
+  color: var(--wc-color-text-secondary);
+  font-size: 26rpx;
+}

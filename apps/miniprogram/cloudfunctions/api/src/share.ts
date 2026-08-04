@@ -1,8 +1,9 @@
 import { db, _, requireWorkspace, writeAudit } from "./db";
 import { toShareSnapshot } from "./map";
 import { assert, assertDate, CloudError, nowIso } from "./util";
-import { forecastRange } from "./weather";
+import { forecastRange, resolveLocation } from "./weather";
 import { formatTimeRangeFromSnapshot } from "@workcal/schedule-engine";
+import { readHolidayRange } from "./holiday";
 
 export async function create(openid: string, payload: any) {
   await requireWorkspace(openid, payload.workspaceId);
@@ -20,8 +21,8 @@ export async function create(openid: string, payload: any) {
     showNote: Boolean(payload.privacyOptions?.showNote),
   };
   const userRes = await db.collection("users").doc(openid).get();
-  const city = userRes.data?.defaultCity || "深圳";
-  const weathers = await forecastRange(city, payload.rangeStart, payload.rangeEnd);
+  const location = await resolveLocation(openid);
+  const weathers = await forecastRange(location, payload.rangeStart, payload.rangeEnd);
   const weatherByDate = new Map(weathers.map((w) => [w.date, w]));
   const instances = await db
     .collection("scheduleInstances")
@@ -33,6 +34,7 @@ export async function create(openid: string, payload: any) {
     .orderBy("businessDate", "asc")
     .limit(1000)
     .get();
+  const holidayMap = await readHolidayRange(payload.rangeStart, payload.rangeEnd);
   const entries = instances.data.map((row: any) => {
     const forecast = weatherByDate.get(row.businessDate);
     return {
@@ -53,6 +55,8 @@ export async function create(openid: string, payload: any) {
               temperatureMax: forecast.temperatureMax,
             }
           : null,
+      overtime:
+        row.kind !== "rest" && holidayMap[row.businessDate] === "holiday" ? true : undefined,
     };
   });
   const createdAt = nowIso();

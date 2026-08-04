@@ -8,7 +8,17 @@ import {
   weekdayCN,
 } from "../../utils/date";
 import { buildPreviewEntries } from "../../utils/poster-data";
-import { drawPoster, posterHeight } from "../../utils/poster";
+import {
+  buildCalendarGrid,
+  calendarPosterHeight,
+  drawCalendarPoster,
+  drawPoster,
+  posterHeight,
+  type CalendarGridCell,
+} from "../../utils/poster";
+import { isMultiDay, needsLongRangeWarning } from "../../utils/share-range";
+import { ensureHolidayRange } from "../../services/holiday-cache";
+import { isOvertime } from "../../utils/holiday";
 
 const PRIVACY_KEY = "wc_share_privacy";
 
@@ -49,6 +59,10 @@ Page({
     privacyItems: PRIVACY_ITEMS,
     privacy: defaultPrivacy(),
     previewEntries: [] as ReturnType<typeof buildPreviewEntries>,
+    previewGrid: [] as CalendarGridCell[],
+    isMultiDay: false,
+    customStart: "",
+    customEnd: "",
     loading: true,
     error: false,
     errorMessage: "",
@@ -67,11 +81,14 @@ Page({
       { label: "今日", start: date, end: date },
       { label: "本周", start: date, end: addDays(date, 6) },
       { label: "本月", start: month.start, end: month.end },
+      { label: "自定义", start: date, end: date },
     ];
     this.setData({
       rangeOptions: options,
       rangeStart: options[0]?.start ?? date,
       rangeEnd: options[0]?.end ?? date,
+      customStart: date,
+      customEnd: date,
     });
   },
 
@@ -87,20 +104,30 @@ Page({
     this.setData({ loading: true, error: false });
     try {
       const { rangeStart, rangeEnd } = this.data;
-      const [schedules, weatherList] = await Promise.all([
+      const [schedules, weatherList, holidayMap] = await Promise.all([
         api.schedules(rangeStart, rangeEnd),
         api.weather(rangeStart, rangeEnd),
+        ensureHolidayRange(rangeStart, rangeEnd),
       ]);
       const previewEntries = buildPreviewEntries(schedules, weatherList, this.data.privacy).map(
-        (entry) => ({
-          ...entry,
-          day: String(Number(entry.date.slice(8, 10))),
-          weekday: weekdayCN(entry.date),
-        }),
+        (entry) => {
+          const overtime = isOvertime(holidayMap, entry.date, entry.kind) || undefined;
+          return {
+            ...entry,
+            overtime,
+            day: String(Number(entry.date.slice(8, 10))),
+            weekday: weekdayCN(entry.date),
+          };
+        },
       );
+      const multi = isMultiDay(rangeStart, rangeEnd);
       this.setData({
         weatherList,
         previewEntries,
+        previewGrid: multi
+          ? buildCalendarGrid(rangeStart, rangeEnd, previewEntries)
+          : [],
+        isMultiDay: multi,
         loading: false,
       });
     } catch (err) {
@@ -116,8 +143,34 @@ Page({
     const index = Number(event.currentTarget.dataset.index);
     const option = this.data.rangeOptions[index];
     if (!option) return;
-    this.setData({ rangeIndex: index, rangeStart: option.start, rangeEnd: option.end });
+    if (index === 3) {
+      this.setData({
+        rangeIndex: index,
+        rangeStart: this.data.customStart,
+        rangeEnd: this.data.customEnd,
+      });
+    } else {
+      this.setData({ rangeIndex: index, rangeStart: option.start, rangeEnd: option.end });
+    }
     this.load();
+  },
+
+  onCustomStartChange(event: WechatMiniprogram.PickerChange) {
+    const customStart = String(event.detail.value);
+    this.setData({ customStart });
+    if (this.data.rangeIndex === 3) {
+      this.setData({ rangeStart: customStart });
+      this.load();
+    }
+  },
+
+  onCustomEndChange(event: WechatMiniprogram.PickerChange) {
+    const customEnd = String(event.detail.value);
+    this.setData({ customEnd });
+    if (this.data.rangeIndex === 3) {
+      this.setData({ rangeEnd: customEnd });
+      this.load();
+    }
   },
 
   onPrivacyChange(event: WechatMiniprogram.SwitchChange) {
@@ -135,6 +188,24 @@ Page({
 
   async generate() {
     if (this.data.generating) return;
+    if (needsLongRangeWarning(this.data.rangeStart, this.data.rangeEnd)) {
+      wx.showModal({
+        title: "日期跨度较长",
+        content:
+          "当前范围超过 3 个月，生成的海报会很长，可能影响保存效果。是否继续生成？",
+        confirmText: "继续生成",
+        cancelText: "取消",
+        success: (res) => {
+          if (res.confirm) void this.doGenerate();
+        },
+      });
+      return;
+    }
+    void this.doGenerate();
+  },
+
+  async doGenerate() {
+    if (this.data.generating) return;
     this.setData({ generating: true, canvasVisible: true });
     try {
       const snapshot = await api.createShareSnapshot({
@@ -143,13 +214,17 @@ Page({
         templateCode: "default",
         privacyOptions: this.data.privacy,
       });
-      const height = posterHeight(snapshot);
+      const multi = isMultiDay(this.data.rangeStart, this.data.rangeEnd);
+      const height = multi
+        ? calendarPosterHeight(snapshot.rangeStart, snapshot.rangeEnd)
+        : posterHeight(snapshot);
       this.setData({
         snapshot,
         canvasHeight: Math.min(900, height * 0.6),
         generating: false,
       });
-      drawPoster(snapshot, (err, path) => {
+      const draw = multi ? drawCalendarPoster : drawPoster;
+      draw(snapshot, (err, path) => {
         if (err) {
           wx.showToast({ title: err.message, icon: "none" });
           this.setData({ generating: false, canvasVisible: false });

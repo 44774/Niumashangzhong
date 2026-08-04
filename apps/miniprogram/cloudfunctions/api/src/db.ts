@@ -20,6 +20,7 @@ export const COLLECTIONS = [
   "notificationJobs",
   "shareSnapshots",
   "weatherCache",
+  "holidays",
   "auditLogs",
 ] as const;
 

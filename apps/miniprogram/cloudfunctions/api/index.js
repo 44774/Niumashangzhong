@@ -233,7 +233,8 @@ function toUser(doc) {
     avatarUrl: null,
     timezone: doc.timezone,
     locale: "zh-CN",
-    defaultCity: doc.defaultCity ?? null
+    defaultCity: doc.defaultCity ?? null,
+    defaultLocation: doc.defaultLocation ?? null
   };
 }
 function toWorkspace(doc) {
@@ -519,64 +520,274 @@ function findOverlapConflicts(candidate, existing) {
 }
 
 // apps/miniprogram/cloudfunctions/api/src/weather.ts
-var CONDITIONS = [
-  { code: "sunny", text: "\u6674", rain: 0 },
-  { code: "cloudy", text: "\u591A\u4E91", rain: 10 },
-  { code: "overcast", text: "\u9634", rain: 30 },
-  { code: "rain", text: "\u5C0F\u96E8", rain: 60 },
-  { code: "thunderstorm", text: "\u96F7\u9635\u96E8", rain: 90 },
-  { code: "windy", text: "\u5927\u98CE", rain: 20 }
-];
-async function forecastRange(city, from, to) {
+var WMO_MAP = {
+  0: { text: "\u6674", code: "sunny", warnings: [] },
+  1: { text: "\u6674\u95F4\u591A\u4E91", code: "partly_cloudy", warnings: [] },
+  2: { text: "\u591A\u4E91", code: "cloudy", warnings: [] },
+  3: { text: "\u9634", code: "overcast", warnings: [] },
+  45: { text: "\u96FE", code: "fog", warnings: [] },
+  48: { text: "\u96FE\u51C7", code: "fog", warnings: [] },
+  51: { text: "\u6BDB\u6BDB\u96E8", code: "drizzle", warnings: [] },
+  53: { text: "\u6BDB\u6BDB\u96E8", code: "drizzle", warnings: [] },
+  55: { text: "\u6BDB\u6BDB\u96E8", code: "drizzle", warnings: [] },
+  56: { text: "\u51BB\u6BDB\u6BDB\u96E8", code: "freezing_drizzle", warnings: ["ice"] },
+  57: { text: "\u51BB\u6BDB\u6BDB\u96E8", code: "freezing_drizzle", warnings: ["ice"] },
+  61: { text: "\u5C0F\u96E8", code: "rain", warnings: [] },
+  63: { text: "\u4E2D\u96E8", code: "rain", warnings: [] },
+  65: { text: "\u5927\u96E8", code: "rain", warnings: [] },
+  66: { text: "\u51BB\u96E8", code: "freezing_rain", warnings: ["ice"] },
+  67: { text: "\u51BB\u96E8", code: "freezing_rain", warnings: ["ice"] },
+  71: { text: "\u5C0F\u96EA", code: "snow", warnings: [] },
+  73: { text: "\u4E2D\u96EA", code: "snow", warnings: [] },
+  75: { text: "\u5927\u96EA", code: "snow", warnings: [] },
+  77: { text: "\u96EA\u7C92", code: "snow", warnings: [] },
+  80: { text: "\u9635\u96E8", code: "shower", warnings: [] },
+  81: { text: "\u9635\u96E8", code: "shower", warnings: [] },
+  82: { text: "\u5F3A\u9635\u96E8", code: "shower", warnings: [] },
+  85: { text: "\u9635\u96EA", code: "snow", warnings: [] },
+  86: { text: "\u9635\u96EA", code: "snow", warnings: [] },
+  95: { text: "\u96F7\u9635\u96E8", code: "thunderstorm", warnings: ["storm"] },
+  96: { text: "\u96F7\u9635\u96E8\u4F34\u51B0\u96F9", code: "thunderstorm", warnings: ["storm", "hail"] },
+  99: { text: "\u96F7\u9635\u96E8\u4F34\u51B0\u96F9", code: "thunderstorm", warnings: ["storm", "hail"] }
+};
+function mapWeatherCode(code) {
+  return WMO_MAP[code] ?? { text: "\u672A\u77E5\u5929\u6C14", code: "unknown", warnings: [] };
+}
+function locationKey(location) {
+  return `loc:${location.latitude.toFixed(4)},${location.longitude.toFixed(4)}`;
+}
+async function openMeteo(url) {
+  const res = await fetch(url);
+  if (!res.ok) {
+    throw new Error(`Open-Meteo \u8FD4\u56DE ${res.status}`);
+  }
+  return res.json();
+}
+function toForecast(location, date, daily, index) {
+  var _a, _b, _c, _d, _e;
+  const code = ((_a = daily.weather_code) == null ? void 0 : _a[index]) ?? 0;
+  const mapped = mapWeatherCode(Number(code));
+  const max = (_b = daily.temperature_2m_max) == null ? void 0 : _b[index];
+  const min = (_c = daily.temperature_2m_min) == null ? void 0 : _c[index];
+  const warnings = [...mapped.warnings];
+  if (max != null && Number(max) >= 35) warnings.push("heat");
+  if (min != null && Number(min) <= 0) warnings.push("cold");
+  return {
+    date,
+    conditionCode: mapped.code,
+    conditionText: mapped.text,
+    temperatureMin: min != null ? Number(min) : 0,
+    temperatureMax: max != null ? Number(max) : 0,
+    humidityPercent: null,
+    precipitationProbability: ((_d = daily.precipitation_probability_max) == null ? void 0 : _d[index]) ?? null,
+    windDirection: null,
+    windLevel: ((_e = daily.wind_speed_10m_max) == null ? void 0 : _e[index]) != null ? `${daily.wind_speed_10m_max[index]}km/h` : null,
+    airQuality: null,
+    warningCodes: warnings,
+    updatedAt: (/* @__PURE__ */ new Date()).toISOString()
+  };
+}
+function minDate2(a, b) {
+  return a <= b ? a : b;
+}
+function maxDate(a, b) {
+  return a >= b ? a : b;
+}
+async function forecastRange(location, from, to) {
+  const today = todayInTimezone("Asia/Shanghai");
+  const pastLimit = addDays(today, -92);
+  const futureLimit = addDays(today, 16);
+  const archiveStart = from < pastLimit ? from : null;
+  const archiveEnd = archiveStart ? minDate2(to, addDays(pastLimit, -1)) : null;
+  const forecastStart = maxDate(from, pastLimit);
+  const forecastEnd = minDate2(to, futureLimit);
+  const baseParams = "daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,wind_speed_10m_max&timezone=Asia%2FShanghai";
+  const jobs = [];
+  if (archiveStart && archiveEnd && archiveStart <= archiveEnd) {
+    const url = `https://archive-api.open-meteo.com/v1/archive?latitude=${location.latitude}&longitude=${location.longitude}&start_date=${archiveStart}&end_date=${archiveEnd}&${baseParams}`;
+    jobs.push(
+      openMeteo(url).then((data) => {
+        const daily = data.daily ?? {};
+        return (daily.time ?? []).map((date, i) => ({
+          date,
+          item: toForecast(location, date, daily, i)
+        }));
+      })
+    );
+  }
+  if (forecastStart <= forecastEnd) {
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${location.latitude}&longitude=${location.longitude}&start_date=${forecastStart}&end_date=${forecastEnd}&${baseParams}`;
+    jobs.push(
+      openMeteo(url).then((data) => {
+        const daily = data.daily ?? {};
+        return (daily.time ?? []).map((date, i) => ({
+          date,
+          item: toForecast(location, date, daily, i)
+        }));
+      })
+    );
+  }
+  const settled = await Promise.allSettled(jobs);
+  const rows = [];
+  for (const s of settled) {
+    if (s.status === "fulfilled") rows.push(...s.value);
+  }
+  const byDate = new Map(rows.map((r) => [r.date, r.item]));
+  const key = locationKey(location);
   const result = [];
   let cursor = from;
-  let index = 0;
-  while (cursor <= to && index < 31) {
-    const cond = CONDITIONS[index % CONDITIONS.length];
-    if (!cond) break;
-    const base = index % 5;
-    const forecast = {
-      date: cursor,
-      conditionCode: cond.code,
-      conditionText: cond.text,
-      temperatureMin: 24 + base,
-      temperatureMax: 29 + base,
-      humidityPercent: 55 + index * 7 % 30,
-      precipitationProbability: cond.rain + index % 3 * 5,
-      windDirection: ["\u4E1C\u98CE", "\u5357\u98CE", "\u897F\u98CE", "\u5317\u98CE"][index % 4] ?? null,
-      windLevel: `${1 + index % 4}\u7EA7`,
-      airQuality: ["\u4F18", "\u826F", "\u8F7B\u5EA6\u6C61\u67D3"][index % 3] ?? null,
-      warningCodes: cond.code === "thunderstorm" ? ["storm"] : [],
-      updatedAt: (/* @__PURE__ */ new Date()).toISOString()
-    };
-    await db.collection("weatherCache").doc(`${city}_${cursor}`).set({
-      data: {
-        locationKey: `city:${city}`,
-        timezone: "Asia/Shanghai",
-        ...forecast,
-        expiresAt: new Date(Date.now() + 6 * 60 * 60 * 1e3).toISOString()
-      }
-    });
-    result.push(forecast);
+  while (cursor <= to) {
+    const item = byDate.get(cursor);
+    if (item) {
+      await db.collection("weatherCache").doc(`${key}_${cursor}`).set({
+        data: {
+          locationKey: key,
+          date: cursor,
+          timezone: "Asia/Shanghai",
+          ...item,
+          expiresAt: new Date(Date.now() + 6 * 60 * 60 * 1e3).toISOString()
+        }
+      });
+      result.push(item);
+    }
     cursor = addDays(cursor, 1);
-    index += 1;
   }
   return result;
 }
-async function get(openid, payload) {
+async function resolveLocation(openid, location) {
   var _a;
+  if (location && typeof location.latitude === "number" && typeof location.longitude === "number") {
+    return location;
+  }
+  try {
+    const userRes = await db.collection("users").doc(openid).get();
+    const def = (_a = userRes.data) == null ? void 0 : _a.defaultLocation;
+    if (def && typeof def.latitude === "number" && typeof def.longitude === "number") {
+      return def;
+    }
+  } catch {
+  }
+  return { name: "\u6DF1\u5733", latitude: 22.5431, longitude: 114.0579 };
+}
+async function get(openid, payload) {
   await requireWorkspace(openid, payload.workspaceId);
   assertDate(payload.from);
   assertDate(payload.to);
   if (payload.from > payload.to) {
     throw new CloudError("VALIDATION_ERROR", "from \u4E0D\u80FD\u665A\u4E8E to");
   }
-  return forecastRange(((_a = payload.city) == null ? void 0 : _a.trim()) || "\u6DF1\u5733", payload.from, payload.to);
+  const location = await resolveLocation(openid, payload.location);
+  try {
+    return await forecastRange(location, payload.from, payload.to);
+  } catch (err) {
+    console.warn("[weather] Open-Meteo \u83B7\u53D6\u5931\u8D25\uFF0C\u56DE\u9000\u7F13\u5B58", err.message);
+    const key = locationKey(location);
+    const cached = await db.collection("weatherCache").where({ locationKey: key, date: _.gte(payload.from).and(_.lte(payload.to)) }).limit(100).get();
+    return cached.data.filter((row) => new Date(row.expiresAt).getTime() > Date.now()).map((row) => {
+      const copy = { ...row };
+      delete copy.locationKey;
+      delete copy.expiresAt;
+      return copy;
+    });
+  }
 }
-async function getForDate(city, date) {
-  assert(city, "VALIDATION_ERROR", "\u7F3A\u5C11\u57CE\u5E02");
-  const list4 = await forecastRange(city, date, date);
+async function getForDate(openid, date) {
+  const location = await resolveLocation(openid);
+  const list4 = await forecastRange(location, date, date);
   return list4[0] ?? null;
+}
+
+// apps/miniprogram/cloudfunctions/api/src/holiday.ts
+var HOLIDAY_MIN_YEAR = 2019;
+var API_BASE = "https://timor.tech/api/holiday/year/";
+async function syncYear(year) {
+  const res = await fetch(`${API_BASE}${year}`);
+  if (!res.ok) {
+    throw new CloudError("HOLIDAY_FETCH_FAILED", `\u8282\u5047\u65E5\u63A5\u53E3\u8FD4\u56DE ${res.status}`, 502);
+  }
+  const data = await res.json();
+  const days = {};
+  const map = (data == null ? void 0 : data.holiday) ?? {};
+  for (const key of Object.keys(map)) {
+    const item = map[key];
+    if (!item || typeof item.holiday !== "boolean") continue;
+    const date = item.date && /^\d{4}-\d{2}-\d{2}$/.test(item.date) ? item.date : `${year}-${key}`;
+    days[date] = item.holiday ? "holiday" : "workday";
+  }
+  await db.collection("holidays").doc(`year:${year}`).set({
+    data: {
+      year,
+      days,
+      source: "timor.tech",
+      updatedAt: (/* @__PURE__ */ new Date()).toISOString()
+    }
+  });
+  return { year, count: Object.keys(days).length };
+}
+async function syncRange(fromYear, toYear) {
+  const results = [];
+  for (let year = fromYear; year <= toYear; year += 1) {
+    try {
+      results.push(await syncYear(year));
+    } catch (err) {
+      console.warn(`[holiday] ${year} \u540C\u6B65\u5931\u8D25:`, err.message);
+    }
+  }
+  return results;
+}
+async function readHolidayRange(from, to) {
+  var _a;
+  const fromYear = Number(from.slice(0, 4));
+  const toYear = Number(to.slice(0, 4));
+  const out = {};
+  for (let year = fromYear; year <= toYear; year += 1) {
+    try {
+      const doc = await db.collection("holidays").doc(`year:${year}`).get();
+      const days = (_a = doc.data) == null ? void 0 : _a.days;
+      if (days) {
+        for (const [date, type] of Object.entries(days)) {
+          if (date >= from && date <= to) {
+            out[date] = type;
+          }
+        }
+      }
+    } catch {
+    }
+  }
+  return out;
+}
+async function ensureYears(fromYear, toYear) {
+  for (let year = fromYear; year <= toYear; year += 1) {
+    try {
+      await db.collection("holidays").doc(`year:${year}`).get();
+    } catch {
+      try {
+        await syncYear(year);
+      } catch (err) {
+        console.warn(`[holiday] ${year} \u61D2\u52A0\u8F7D\u5931\u8D25:`, err.message);
+      }
+    }
+  }
+}
+async function getRange(openid, payload) {
+  await requireWorkspace(openid, payload.workspaceId);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(payload.from) || !/^\d{4}-\d{2}-\d{2}$/.test(payload.to)) {
+    throw new CloudError("VALIDATION_ERROR", "\u65E5\u671F\u683C\u5F0F\u5FC5\u987B\u4E3A YYYY-MM-DD");
+  }
+  if (payload.from > payload.to) {
+    throw new CloudError("VALIDATION_ERROR", "from \u4E0D\u80FD\u665A\u4E8E to");
+  }
+  const fromYear = Math.max(HOLIDAY_MIN_YEAR, Number(payload.from.slice(0, 4)));
+  const toYear = Number(payload.to.slice(0, 4));
+  await ensureYears(fromYear, toYear);
+  return readHolidayRange(payload.from, payload.to);
+}
+async function sync(openid, payload) {
+  await requireWorkspace(openid, payload.workspaceId);
+  const currentYear = (/* @__PURE__ */ new Date()).getFullYear();
+  const fromYear = Math.max(HOLIDAY_MIN_YEAR, currentYear - 1);
+  const synced = await syncRange(fromYear, currentYear + 1);
+  return { synced };
 }
 
 // apps/miniprogram/cloudfunctions/api/src/notify.ts
@@ -585,6 +796,7 @@ var DEFAULTS = {
   weatherEnabled: true,
   scheduleChangesEnabled: true,
   approvalEnabled: true,
+  holidayOvertimeEnabled: true,
   quietHours: null,
   channels: { wechat: true }
 };
@@ -598,6 +810,7 @@ async function get2(openid, payload) {
         weatherEnabled: res.data.weatherEnabled ?? DEFAULTS.weatherEnabled,
         scheduleChangesEnabled: res.data.scheduleChangesEnabled ?? DEFAULTS.scheduleChangesEnabled,
         approvalEnabled: res.data.approvalEnabled ?? DEFAULTS.approvalEnabled,
+        holidayOvertimeEnabled: res.data.holidayOvertimeEnabled ?? DEFAULTS.holidayOvertimeEnabled,
         quietHours: res.data.quietHours ?? DEFAULTS.quietHours,
         channels: res.data.channels ?? DEFAULTS.channels
       };
@@ -615,6 +828,7 @@ async function save(openid, payload) {
     weatherEnabled: Boolean(prefs.weatherEnabled ?? true),
     scheduleChangesEnabled: Boolean(prefs.scheduleChangesEnabled ?? true),
     approvalEnabled: Boolean(prefs.approvalEnabled ?? true),
+    holidayOvertimeEnabled: Boolean(prefs.holidayOvertimeEnabled ?? true),
     quietHours: prefs.quietHours ?? null,
     channels: prefs.channels ?? { wechat: true }
   };
@@ -632,6 +846,8 @@ async function rebuildJobs(openid, workspaceId, instance, prefs) {
   var _a, _b, _c, _d;
   await db.collection("notificationJobs").where({ instanceId: instance._id, status: "pending" }).remove();
   if (!instance.startsAt) return;
+  const holidayMap = await readHolidayRange(instance.businessDate, instance.businessDate);
+  const overtime = prefs.holidayOvertimeEnabled !== false && instance.kind !== "rest" && holidayMap[instance.businessDate] === "holiday";
   const start = new Date(instance.startsAt);
   for (const minutes of prefs.shiftReminders ?? []) {
     const triggerAt = new Date(start.getTime() - minutes * 6e4);
@@ -650,7 +866,8 @@ async function rebuildJobs(openid, workspaceId, instance, prefs) {
           startTime: (_b = instance.shiftSnapshot) == null ? void 0 : _b.startTime,
           endTime: (_c = instance.shiftSnapshot) == null ? void 0 : _c.endTime,
           reminderMinutes: minutes,
-          version: instance.version
+          version: instance.version,
+          overtime
         },
         status: "pending",
         createdAt: nowIso()
@@ -669,7 +886,8 @@ async function rebuildJobs(openid, workspaceId, instance, prefs) {
         payload: {
           businessDate: instance.businessDate,
           shiftName: (_d = instance.shiftSnapshot) == null ? void 0 : _d.name,
-          version: instance.version
+          version: instance.version,
+          overtime
         },
         status: "pending",
         createdAt: nowIso()
@@ -819,19 +1037,20 @@ async function create2(openid, payload) {
   return toScheduleInstance(doc.data);
 }
 async function detail(openid, payload) {
-  var _a;
   const doc = await db.collection("scheduleInstances").doc(payload.id).get();
   const data = doc.data;
   if (!data) {
     throw new CloudError("NOT_FOUND", "\u6392\u73ED\u4E0D\u5B58\u5728", 404);
   }
   await requireWorkspace(openid, data.workspaceId);
-  const userRes = await db.collection("users").doc(openid).get();
-  const weather = await getForDate(((_a = userRes.data) == null ? void 0 : _a.defaultCity) || "\u6DF1\u5733", data.businessDate);
+  const weather = await getForDate(openid, data.businessDate);
+  const holidayMap = await readHolidayRange(data.businessDate, data.businessDate);
+  const overtime = data.kind !== "rest" && holidayMap[data.businessDate] === "holiday";
   return {
     ...toScheduleInstance(data),
     weather,
     pendingChange: null,
+    overtime,
     history: (data.history ?? []).map((h) => ({
       version: h.version,
       snapshot: h.snapshot,
@@ -1108,7 +1327,7 @@ async function list3(openid, payload) {
 
 // apps/miniprogram/cloudfunctions/api/src/share.ts
 async function create4(openid, payload) {
-  var _a, _b, _c, _d, _e, _f, _g;
+  var _a, _b, _c, _d, _e, _f;
   await requireWorkspace(openid, payload.workspaceId);
   assert(payload.rangeStart && payload.rangeEnd, "VALIDATION_ERROR", "rangeStart \u4E0E rangeEnd \u4E3A\u5FC5\u586B");
   assertDate(payload.rangeStart);
@@ -1124,14 +1343,15 @@ async function create4(openid, payload) {
     showNote: Boolean((_e = payload.privacyOptions) == null ? void 0 : _e.showNote)
   };
   const userRes = await db.collection("users").doc(openid).get();
-  const city = ((_f = userRes.data) == null ? void 0 : _f.defaultCity) || "\u6DF1\u5733";
-  const weathers = await forecastRange(city, payload.rangeStart, payload.rangeEnd);
+  const location = await resolveLocation(openid);
+  const weathers = await forecastRange(location, payload.rangeStart, payload.rangeEnd);
   const weatherByDate = new Map(weathers.map((w) => [w.date, w]));
   const instances = await db.collection("scheduleInstances").where({
     workspaceId: payload.workspaceId,
     ownerOpenid: openid,
     businessDate: _.gte(payload.rangeStart).and(_.lte(payload.rangeEnd))
   }).orderBy("businessDate", "asc").limit(1e3).get();
+  const holidayMap = await readHolidayRange(payload.rangeStart, payload.rangeEnd);
   const entries = instances.data.map((row) => {
     var _a2, _b2, _c2, _d2, _e2;
     const forecast = weatherByDate.get(row.businessDate);
@@ -1149,7 +1369,8 @@ async function create4(openid, payload) {
         conditionCode: forecast.conditionCode,
         temperatureMin: forecast.temperatureMin,
         temperatureMax: forecast.temperatureMax
-      } : null
+      } : null,
+      overtime: row.kind !== "rest" && holidayMap[row.businessDate] === "holiday" ? true : void 0
     };
   });
   const createdAt = nowIso();
@@ -1162,7 +1383,7 @@ async function create4(openid, payload) {
       privacyOptions: privacy,
       templateCode: payload.templateCode || "default",
       snapshot: {
-        ownerDisplayName: privacy.showDisplayName ? ((_g = userRes.data) == null ? void 0 : _g.displayName) ?? null : null,
+        ownerDisplayName: privacy.showDisplayName ? ((_f = userRes.data) == null ? void 0 : _f.displayName) ?? null : null,
         rangeStart: payload.rangeStart,
         rangeEnd: payload.rangeEnd,
         templateCode: payload.templateCode || "default",
@@ -1222,6 +1443,24 @@ async function seedDemo(openid) {
   return { user: toUser(user), workspace: toWorkspace(workspace), created };
 }
 
+// apps/miniprogram/cloudfunctions/api/src/user.ts
+async function updateLocation(openid, payload) {
+  await requireWorkspace(openid, payload.workspaceId);
+  const loc = payload.location;
+  assert(loc && typeof loc.name === "string", "VALIDATION_ERROR", "\u4F4D\u7F6E\u540D\u79F0\u4E0D\u80FD\u4E3A\u7A7A");
+  assert(
+    typeof loc.latitude === "number" && typeof loc.longitude === "number",
+    "VALIDATION_ERROR",
+    "\u7ECF\u7EAC\u5EA6\u683C\u5F0F\u9519\u8BEF"
+  );
+  await db.collection("users").doc(openid).update({
+    data: { defaultLocation: loc, updatedAt: nowIso() }
+  });
+  const user = await db.collection("users").doc(openid).get();
+  if (!user.data) throw new CloudError("NOT_FOUND", "\u7528\u6237\u4E0D\u5B58\u5728", 404);
+  return toUser(user.data);
+}
+
 // apps/miniprogram/cloudfunctions/api/src/index.ts
 import_wx_server_sdk2.default.init({ env: import_wx_server_sdk2.default.DYNAMIC_CURRENT_ENV });
 exports.main = async (event) => {
@@ -1271,6 +1510,12 @@ exports.main = async (event) => {
         return ok(await list3(openid, payload));
       case "weather.get":
         return ok(await get(openid, payload));
+      case "holiday.sync":
+        return ok(await sync(openid, payload));
+      case "holiday.getRange":
+        return ok(await getRange(openid, payload));
+      case "user.updateLocation":
+        return ok(await updateLocation(openid, payload));
       case "notify.get":
         return ok(await get2(openid, payload));
       case "notify.save":

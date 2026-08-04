@@ -19,7 +19,7 @@
           wx:key="name"
           class="day-shift"
           style="background: {{shift.color}}1A; color: {{shift.color}};"
-        >{{shift.shortName}}</text>
+        >{{shift.shortName}}<text wx:if="{{shift.overtime}}" class="ot-tag">加</text></text>
       </view>
     </view>
   </view>

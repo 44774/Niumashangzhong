@@ -5,7 +5,10 @@
       <text class="month-label">{{monthLabel}}</text>
       <text class="month-arrow" bindtap="nextMonth">›</text>
     </view>
-    <button class="today-btn" bindtap="goToday">今天</button>
+    <view class="row">
+      <button class="today-btn" bindtap="goCycle">循环排班</button>
+      <button class="today-btn" bindtap="goToday">今天</button>
+    </view>
   </view>
 
   <calendar-month

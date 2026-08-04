@@ -10,6 +10,7 @@ import { toScheduleInstance } from "./map";
 import { assert, assertDate, assertTime, CloudError, nowIso } from "./util";
 import { getForDate } from "./weather";
 import { get as getPrefs, rebuildJobs } from "./notify";
+import { readHolidayRange } from "./holiday";
 
 export function snapshotFromTemplate(tpl: any) {
   return {
@@ -189,12 +190,14 @@ export async function detail(openid: string, payload: { id: string }) {
     throw new CloudError("NOT_FOUND", "排班不存在", 404);
   }
   await requireWorkspace(openid, data.workspaceId);
-  const userRes = await db.collection("users").doc(openid).get();
-  const weather = await getForDate(userRes.data?.defaultCity || "深圳", data.businessDate);
+  const weather = await getForDate(openid, data.businessDate);
+  const holidayMap = await readHolidayRange(data.businessDate, data.businessDate);
+  const overtime = data.kind !== "rest" && holidayMap[data.businessDate] === "holiday";
   return {
     ...toScheduleInstance(data),
     weather,
     pendingChange: null,
+    overtime,
     history: (data.history ?? []).map((h: any) => ({
       version: h.version,
       snapshot: h.snapshot,

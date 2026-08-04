@@ -2,6 +2,7 @@ export interface CalendarDayShift {
   name: string;
   shortName: string;
   color: string;
+  overtime?: boolean;
 }
 
 Component({

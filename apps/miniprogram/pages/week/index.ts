@@ -2,6 +2,8 @@ import { api } from "../../services/api";
 import { getToken } from "../../stores/session";
 import { formatDateShort, todayString, weekdayCN, weekRange } from "../../utils/date";
 import { formatTimeRange, weatherText } from "../../utils/format";
+import { ensureHolidayRange } from "../../services/holiday-cache";
+import { isOvertime } from "../../utils/holiday";
 
 interface WeekRow {
   date: string;
@@ -12,6 +14,7 @@ interface WeekRow {
   shiftName: string;
   shiftShortName: string;
   shiftColor: string;
+  overtime: boolean;
   timeText: string;
   weatherText: string;
 }
@@ -42,9 +45,10 @@ Page({
     try {
       const today = todayString();
       const days = weekRange(today);
-      const [schedules, weathers] = await Promise.all([
+      const [schedules, weathers, holidayMap] = await Promise.all([
         api.schedules(days[0], days[days.length - 1]),
         api.weather(days[0], days[days.length - 1]),
+        ensureHolidayRange(days[0], days[days.length - 1]),
       ]);
       const instanceByDate = new Map(schedules.map((s) => [s.businessDate, s]));
       const weatherByDate = new Map(weathers.map((w) => [w.date, w]));
@@ -61,6 +65,7 @@ Page({
           shiftName: instance?.shiftSnapshot.name ?? "",
           shiftShortName: instance?.shiftSnapshot.shortName ?? "",
           shiftColor: instance?.shiftSnapshot.color ?? "#1F6FEB",
+          overtime: isOvertime(holidayMap, date, instance?.kind ?? "rest"),
           timeText: instance ? formatTimeRange(instance.shiftSnapshot) ?? "" : "",
           weatherText: weather ? weatherText(weather) : "",
         };

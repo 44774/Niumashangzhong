@@ -15,6 +15,7 @@ const collections = [
   "notificationJobs",
   "shareSnapshots",
   "weatherCache",
+  "holidays",
   "auditLogs",
 ];
 

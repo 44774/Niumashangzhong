@@ -1,0 +1,25 @@
+<view class="page">
+  <view class="card">
+    <text class="title-card">默认天气位置</text>
+    <view class="location-box">
+      <block wx:if="{{location}}">
+        <text class="location-name">{{location.name}}</text>
+        <text class="location-coord">{{location.latitude.toFixed(4)}}, {{location.longitude.toFixed(4)}}</text>
+      </block>
+      <block wx:else>
+        <text class="location-empty">尚未设置，将使用默认城市（深圳）</text>
+      </block>
+    </view>
+  </view>
+
+  <view class="card">
+    <button class="btn-primary btn-block" loading="{{saving}}" bindtap="onChooseLocation">
+      地图选点
+    </button>
+    <view class="section-gap"></view>
+    <button class="btn-secondary btn-block" loading="{{saving}}" bindtap="onAutoLocation">
+      使用当前位置
+    </button>
+    <text class="location-hint">位置仅用于查询天气与导航，不会出现在分享海报中（除非手动开启地点显示）。</text>
+  </view>
+</view>

@@ -37,6 +37,7 @@
         />
         <text wx:else class="rest-text">休息/未排班</text>
         <text wx:if="{{item.timeText}}" class="shift-time">{{item.timeText}}</text>
+        <text wx:if="{{item.overtime}}" class="ot-badge">加班</text>
       </view>
       <view class="weather-col">
         <text wx:if="{{item.weatherText}}" class="weather-text">{{item.weatherText}}</text>

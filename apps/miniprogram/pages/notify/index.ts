@@ -12,6 +12,7 @@ Page({
       weatherEnabled: true,
       scheduleChangesEnabled: true,
       approvalEnabled: true,
+      holidayOvertimeEnabled: true,
       quietHours: null as { start: string; end: string } | null,
       channels: { wechat: true },
     } as NotificationPreferences,
@@ -65,6 +66,12 @@ Page({
   onScheduleChangeToggle(event: WechatMiniprogram.SwitchChange) {
     this.setData({
       prefs: { ...this.data.prefs, scheduleChangesEnabled: Boolean(event.detail.value) },
+    });
+  },
+
+  onHolidayToggle(event: WechatMiniprogram.SwitchChange) {
+    this.setData({
+      prefs: { ...this.data.prefs, holidayOvertimeEnabled: Boolean(event.detail.value) },
     });
   },
 
