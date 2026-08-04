@@ -1,0 +1,825 @@
+openapi: 3.1.0
+info:
+  title: Work Calendar API
+  version: 1.0.0
+  description: 工作日历小程序、APP 与管理后台统一接口草案。
+servers:
+  - url: /api/v1
+security:
+  - bearerAuth: []
+tags:
+  - name: Auth
+  - name: Workspaces
+  - name: Shifts
+  - name: Schedules
+  - name: Changes
+  - name: Weather
+  - name: Notifications
+  - name: Sharing
+  - name: Admin
+paths:
+  /auth/me:
+    get:
+      tags: [Auth]
+      summary: 获取当前用户
+      responses:
+        '200':
+          description: 当前用户
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/User'}
+  /auth/wechat:
+    post:
+      tags: [Auth]
+      summary: 微信登录（未配置 WECHAT_APPID/WECHAT_SECRET 时自动降级为开发模式）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code]
+              properties:
+                code: {type: string}
+                displayName: {type: string, maxLength: 80}
+      responses:
+        '200':
+          description: 登录成功
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/AuthResponse'}
+  /auth/dev:
+    post:
+      tags: [Auth]
+      summary: 开发账号登录（按 displayName 派生稳定身份，仅本地开发）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                displayName: {type: string, maxLength: 80}
+      responses:
+        '200':
+          description: 登录成功
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/AuthResponse'}
+  /workspaces:
+    get:
+      tags: [Workspaces]
+      summary: 获取可访问工作空间
+      responses:
+        '200':
+          description: 工作空间列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: '#/components/schemas/Workspace'}
+  /shift-templates:
+    get:
+      tags: [Shifts]
+      summary: 获取班次模板
+      parameters:
+        - {$ref: '#/components/parameters/WorkspaceHeader'}
+        - name: active
+          in: query
+          schema: {type: boolean}
+      responses:
+        '200':
+          description: 班次模板
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: '#/components/schemas/ShiftTemplate'}
+    post:
+      tags: [Shifts]
+      summary: 创建班次模板
+      parameters:
+        - {$ref: '#/components/parameters/WorkspaceHeader'}
+        - {$ref: '#/components/parameters/IdempotencyHeader'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ShiftTemplateInput'}
+      responses:
+        '201':
+          description: 已创建
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ShiftTemplate'}
+  /shift-templates/{id}:
+    patch:
+      tags: [Shifts]
+      summary: 更新班次模板
+      parameters:
+        - {$ref: '#/components/parameters/WorkspaceHeader'}
+        - {$ref: '#/components/parameters/ResourceId'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - {$ref: '#/components/schemas/ShiftTemplateInput'}
+                - type: object
+                  required: [version]
+                  properties:
+                    version: {type: integer, minimum: 1}
+      responses:
+        '200':
+          description: 已更新
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ShiftTemplate'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /schedules:
+    get:
+      tags: [Schedules]
+      summary: 查询排班实例
+      parameters:
+        - {$ref: '#/components/parameters/WorkspaceHeader'}
+        - name: ownerUserId
+          in: query
+          schema: {type: string, format: uuid}
+        - name: from
+          in: query
+          required: true
+          schema: {type: string, format: date}
+        - name: to
+          in: query
+          required: true
+          schema: {type: string, format: date}
+      responses:
+        '200':
+          description: 排班列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: '#/components/schemas/ScheduleInstance'}
+    post:
+      tags: [Schedules]
+      summary: 创建单日排班
+      parameters:
+        - {$ref: '#/components/parameters/WorkspaceHeader'}
+        - {$ref: '#/components/parameters/IdempotencyHeader'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ScheduleCreateInput'}
+      responses:
+        '201':
+          description: 已创建
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ScheduleInstance'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /schedules/{id}:
+    get:
+      tags: [Schedules]
+      summary: 获取排班详情
+      parameters:
+        - {$ref: '#/components/parameters/WorkspaceHeader'}
+        - {$ref: '#/components/parameters/ResourceId'}
+      responses:
+        '200':
+          description: 排班详情
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ScheduleDetail'}
+    patch:
+      tags: [Schedules]
+      summary: 修改排班实例
+      parameters:
+        - {$ref: '#/components/parameters/WorkspaceHeader'}
+        - {$ref: '#/components/parameters/ResourceId'}
+        - {$ref: '#/components/parameters/IdempotencyHeader'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [version, changeScope]
+              properties:
+                version: {type: integer, minimum: 1}
+                changeScope: {type: string, enum: [only_this_day, future_instances, whole_rule]}
+                shiftTemplateId: {type: string, format: uuid}
+                customShift: {$ref: '#/components/schemas/CustomShift'}
+                locationId: {type: [string, 'null'], format: uuid}
+                note: {type: [string, 'null'], maxLength: 1000}
+                reason: {type: string, maxLength: 500}
+      responses:
+        '200':
+          description: 已修改
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ScheduleInstance'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /schedule-rules:
+    post:
+      tags: [Schedules]
+      summary: 创建循环排班规则
+      parameters:
+        - {$ref: '#/components/parameters/WorkspaceHeader'}
+        - {$ref: '#/components/parameters/IdempotencyHeader'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ScheduleRuleInput'}
+      responses:
+        '201':
+          description: 已创建并生成排班
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  rule: {$ref: '#/components/schemas/ScheduleRule'}
+                  generatedCount: {type: integer}
+                  conflicts:
+                    type: array
+                    items: {$ref: '#/components/schemas/ScheduleConflict'}
+  /schedule-batches/preview:
+    post:
+      tags: [Admin, Schedules]
+      summary: 预览批量排班
+      parameters:
+        - {$ref: '#/components/parameters/WorkspaceHeader'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/BatchScheduleInput'}
+      responses:
+        '200':
+          description: 预览结果
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/BatchSchedulePreview'}
+  /schedule-batches:
+    post:
+      tags: [Admin, Schedules]
+      summary: 提交批量排班
+      parameters:
+        - {$ref: '#/components/parameters/WorkspaceHeader'}
+        - {$ref: '#/components/parameters/IdempotencyHeader'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [previewToken]
+              properties:
+                previewToken: {type: string}
+                conflictPolicy: {type: string, enum: [reject, skip, overwrite]}
+                overwriteReason: {type: [string, 'null']}
+      responses:
+        '202':
+          description: 批量任务已创建
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/AsyncJob'}
+  /change-requests:
+    get:
+      tags: [Changes]
+      summary: 查询改班申请
+      parameters:
+        - {$ref: '#/components/parameters/WorkspaceHeader'}
+        - name: status
+          in: query
+          schema: {type: string, enum: [pending, approved, rejected, withdrawn, expired]}
+      responses:
+        '200':
+          description: 申请列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: '#/components/schemas/ChangeRequest'}
+    post:
+      tags: [Changes]
+      summary: 提交临时改班
+      parameters:
+        - {$ref: '#/components/parameters/WorkspaceHeader'}
+        - {$ref: '#/components/parameters/IdempotencyHeader'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ChangeRequestInput'}
+      responses:
+        '201':
+          description: 已提交或已直接生效
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ChangeRequest'}
+  /change-requests/{id}/approve:
+    post:
+      tags: [Changes, Admin]
+      summary: 通过改班申请
+      parameters:
+        - {$ref: '#/components/parameters/WorkspaceHeader'}
+        - {$ref: '#/components/parameters/ResourceId'}
+        - {$ref: '#/components/parameters/IdempotencyHeader'}
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                note: {type: [string, 'null'], maxLength: 500}
+      responses:
+        '200':
+          description: 已通过
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ChangeRequest'}
+  /change-requests/{id}/reject:
+    post:
+      tags: [Changes, Admin]
+      summary: 驳回改班申请
+      parameters:
+        - {$ref: '#/components/parameters/WorkspaceHeader'}
+        - {$ref: '#/components/parameters/ResourceId'}
+        - {$ref: '#/components/parameters/IdempotencyHeader'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [note]
+              properties:
+                note: {type: string, minLength: 1, maxLength: 500}
+      responses:
+        '200':
+          description: 已驳回
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ChangeRequest'}
+  /weather:
+    get:
+      tags: [Weather]
+      summary: 获取日期范围天气
+      parameters:
+        - {$ref: '#/components/parameters/WorkspaceHeader'}
+        - name: locationId
+          in: query
+          schema: {type: string, format: uuid}
+        - name: from
+          in: query
+          required: true
+          schema: {type: string, format: date}
+        - name: to
+          in: query
+          required: true
+          schema: {type: string, format: date}
+      responses:
+        '200':
+          description: 天气预报
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: '#/components/schemas/WeatherForecast'}
+  /notification-preferences:
+    get:
+      tags: [Notifications]
+      parameters:
+        - {$ref: '#/components/parameters/WorkspaceHeader'}
+      responses:
+        '200':
+          description: 通知偏好
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/NotificationPreferences'}
+    put:
+      tags: [Notifications]
+      parameters:
+        - {$ref: '#/components/parameters/WorkspaceHeader'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/NotificationPreferences'}
+      responses:
+        '200':
+          description: 已保存
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/NotificationPreferences'}
+  /share-snapshots:
+    post:
+      tags: [Sharing]
+      summary: 创建分享快照（海报由小程序端 Canvas 绘制）
+      parameters:
+        - {$ref: '#/components/parameters/WorkspaceHeader'}
+        - {$ref: '#/components/parameters/IdempotencyHeader'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ShareSnapshotInput'}
+      responses:
+        '201':
+          description: 分享快照已创建
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ShareSnapshot'}
+  /share-links:
+    post:
+      tags: [Sharing]
+      summary: 创建分享链接
+      parameters:
+        - {$ref: '#/components/parameters/WorkspaceHeader'}
+        - {$ref: '#/components/parameters/IdempotencyHeader'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [snapshotId, expiresInHours]
+              properties:
+                snapshotId: {type: string, format: uuid}
+                expiresInHours: {type: integer, minimum: 1, maximum: 720}
+      responses:
+        '201':
+          description: 分享链接
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  url: {type: string, format: uri}
+                  expiresAt: {type: string, format: date-time}
+  /admin/dashboard:
+    get:
+      tags: [Admin]
+      summary: 获取管理仪表盘
+      parameters:
+        - {$ref: '#/components/parameters/WorkspaceHeader'}
+        - name: date
+          in: query
+          schema: {type: string, format: date}
+      responses:
+        '200':
+          description: 仪表盘数据
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/AdminDashboard'}
+  /admin/audit-logs:
+    get:
+      tags: [Admin]
+      summary: 查询审计日志
+      parameters:
+        - {$ref: '#/components/parameters/WorkspaceHeader'}
+        - name: cursor
+          in: query
+          schema: {type: string}
+        - name: action
+          in: query
+          schema: {type: string}
+      responses:
+        '200':
+          description: 审计日志
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items: {$ref: '#/components/schemas/AuditLog'}
+                  nextCursor: {type: [string, 'null']}
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    WorkspaceHeader:
+      name: X-Workspace-Id
+      in: header
+      required: true
+      schema: {type: string, format: uuid}
+    IdempotencyHeader:
+      name: Idempotency-Key
+      in: header
+      required: false
+      schema: {type: string, minLength: 8, maxLength: 128}
+    ResourceId:
+      name: id
+      in: path
+      required: true
+      schema: {type: string, format: uuid}
+  responses:
+    Conflict:
+      description: 版本或排班冲突
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/ErrorResponse'}
+  schemas:
+    AuthResponse:
+      type: object
+      required: [accessToken, user, workspace]
+      properties:
+        accessToken: {type: string}
+        user: {$ref: '#/components/schemas/User'}
+        workspace: {$ref: '#/components/schemas/Workspace'}
+    ShareSnapshot:
+      type: object
+      required: [id, rangeStart, rangeEnd, templateCode, privacyOptions, entries, createdAt]
+      properties:
+        id: {type: string, format: uuid}
+        ownerDisplayName: {type: [string, 'null']}
+        rangeStart: {type: string, format: date}
+        rangeEnd: {type: string, format: date}
+        templateCode: {type: string}
+        privacyOptions:
+          type: object
+          properties:
+            showDisplayName: {type: boolean}
+            showTime: {type: boolean}
+            showWeather: {type: boolean}
+            showLocation: {type: boolean}
+            showNote: {type: boolean}
+        entries:
+          type: array
+          items:
+            type: object
+            properties:
+              date: {type: string, format: date}
+              shiftName: {type: string}
+              shortName: {type: string}
+              kind: {type: string}
+              color: {type: string}
+              timeText: {type: [string, 'null']}
+              location: {type: [string, 'null']}
+              note: {type: [string, 'null']}
+              weather:
+                type: [object, 'null']
+                properties:
+                  conditionText: {type: string}
+                  conditionCode: {type: string}
+                  temperatureMin: {type: number}
+                  temperatureMax: {type: number}
+        createdAt: {type: string, format: date-time}
+    User:
+      type: object
+      required: [id, displayName, timezone]
+      properties:
+        id: {type: string, format: uuid}
+        displayName: {type: string}
+        avatarUrl: {type: [string, 'null'], format: uri}
+        timezone: {type: string}
+        locale: {type: string}
+    Workspace:
+      type: object
+      required: [id, type, name, timezone]
+      properties:
+        id: {type: string, format: uuid}
+        type: {type: string, enum: [personal, organization]}
+        name: {type: string}
+        timezone: {type: string}
+        roleCode: {type: string}
+    ShiftTemplate:
+      allOf:
+        - {$ref: '#/components/schemas/ShiftTemplateInput'}
+        - type: object
+          required: [id, version, isActive]
+          properties:
+            id: {type: string, format: uuid}
+            version: {type: integer}
+            isActive: {type: boolean}
+    ShiftTemplateInput:
+      type: object
+      required: [name, shortName, kind, color]
+      properties:
+        name: {type: string, maxLength: 80}
+        shortName: {type: string, maxLength: 12}
+        kind: {type: string, enum: [work, rest, leave, training, travel, custom]}
+        color: {type: string, pattern: '^#[0-9A-Fa-f]{6}$'}
+        startTime: {type: [string, 'null'], pattern: '^([01]\\d|2[0-3]):[0-5]\\d$'}
+        endTime: {type: [string, 'null'], pattern: '^([01]\\d|2[0-3]):[0-5]\\d$'}
+        endsNextDay: {type: boolean, default: false}
+        unpaidBreakMinutes: {type: integer, minimum: 0, maximum: 720}
+        defaultLocationId: {type: [string, 'null'], format: uuid}
+    CustomShift:
+      type: object
+      required: [name, kind]
+      properties:
+        name: {type: string}
+        kind: {type: string, enum: [work, rest, leave, training, travel, custom]}
+        startTime: {type: [string, 'null']}
+        endTime: {type: [string, 'null']}
+        endsNextDay: {type: boolean}
+        color: {type: string}
+    ScheduleCreateInput:
+      type: object
+      required: [ownerUserId, businessDate]
+      properties:
+        ownerUserId: {type: string, format: uuid}
+        businessDate: {type: string, format: date}
+        shiftTemplateId: {type: string, format: uuid}
+        customShift: {$ref: '#/components/schemas/CustomShift'}
+        locationId: {type: [string, 'null'], format: uuid}
+        note: {type: [string, 'null'], maxLength: 1000}
+    ScheduleInstance:
+      type: object
+      required: [id, businessDate, kind, status, version, shiftSnapshot]
+      properties:
+        id: {type: string, format: uuid}
+        ownerUserId: {type: string, format: uuid}
+        businessDate: {type: string, format: date}
+        timezone: {type: string}
+        startsAt: {type: [string, 'null'], format: date-time}
+        endsAt: {type: [string, 'null'], format: date-time}
+        kind: {type: string, enum: [work, rest, leave, training, travel, custom]}
+        status: {type: string, enum: [scheduled, pending_approval, cancelled, completed]}
+        source: {type: string}
+        shiftSnapshot: {type: object, additionalProperties: true}
+        locationSnapshot: {type: [object, 'null'], additionalProperties: true}
+        note: {type: [string, 'null']}
+        version: {type: integer}
+    ScheduleDetail:
+      allOf:
+        - {$ref: '#/components/schemas/ScheduleInstance'}
+        - type: object
+          properties:
+            weather: {$ref: '#/components/schemas/WeatherForecast'}
+            pendingChange: {$ref: '#/components/schemas/ChangeRequest'}
+            history:
+              type: array
+              items: {type: object, additionalProperties: true}
+    ScheduleRuleInput:
+      type: object
+      required: [ownerUserId, startDate, sequence, timezone]
+      properties:
+        ownerUserId: {type: string, format: uuid}
+        name: {type: [string, 'null']}
+        startDate: {type: string, format: date}
+        endDate: {type: [string, 'null'], format: date}
+        timezone: {type: string}
+        sequence:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required: [shiftTemplateId]
+            properties:
+              shiftTemplateId: {type: string, format: uuid}
+        generationHorizonDays: {type: integer, minimum: 7, maximum: 366, default: 90}
+    ScheduleRule:
+      allOf:
+        - {$ref: '#/components/schemas/ScheduleRuleInput'}
+        - type: object
+          properties:
+            id: {type: string, format: uuid}
+            version: {type: integer}
+            isActive: {type: boolean}
+    ScheduleConflict:
+      type: object
+      required: [type, severity, message]
+      properties:
+        type: {type: string, enum: [overlap, insufficient_rest, coverage_gap, policy]}
+        severity: {type: string, enum: [warning, error]}
+        message: {type: string}
+        existingScheduleId: {type: [string, 'null'], format: uuid}
+    BatchScheduleInput:
+      type: object
+      required: [ownerUserIds, from, to, shiftTemplateId]
+      properties:
+        ownerUserIds:
+          type: array
+          minItems: 1
+          items: {type: string, format: uuid}
+        from: {type: string, format: date}
+        to: {type: string, format: date}
+        weekdays:
+          type: array
+          items: {type: integer, minimum: 0, maximum: 6}
+        shiftTemplateId: {type: string, format: uuid}
+        locationId: {type: [string, 'null'], format: uuid}
+    BatchSchedulePreview:
+      type: object
+      properties:
+        previewToken: {type: string}
+        createCount: {type: integer}
+        overwriteCount: {type: integer}
+        skipCount: {type: integer}
+        conflicts:
+          type: array
+          items: {$ref: '#/components/schemas/ScheduleConflict'}
+        expiresAt: {type: string, format: date-time}
+    ChangeRequestInput:
+      type: object
+      required: [scheduleInstanceId, requestedShift]
+      properties:
+        scheduleInstanceId: {type: string, format: uuid}
+        requestedShift: {$ref: '#/components/schemas/CustomShift'}
+        shiftTemplateId: {type: [string, 'null'], format: uuid}
+        locationId: {type: [string, 'null'], format: uuid}
+        reason: {type: [string, 'null'], maxLength: 500}
+    ChangeRequest:
+      type: object
+      required: [id, status, originalSnapshot, requestedSnapshot, createdAt]
+      properties:
+        id: {type: string, format: uuid}
+        scheduleInstanceId: {type: string, format: uuid}
+        status: {type: string, enum: [pending, approved, rejected, withdrawn, expired]}
+        originalSnapshot: {type: object, additionalProperties: true}
+        requestedSnapshot: {type: object, additionalProperties: true}
+        reason: {type: [string, 'null']}
+        approvalNote: {type: [string, 'null']}
+        createdAt: {type: string, format: date-time}
+        decidedAt: {type: [string, 'null'], format: date-time}
+    WeatherForecast:
+      type: object
+      properties:
+        date: {type: string, format: date}
+        conditionCode: {type: string}
+        conditionText: {type: string}
+        temperatureMin: {type: number}
+        temperatureMax: {type: number}
+        humidityPercent: {type: integer}
+        precipitationProbability: {type: integer}
+        windDirection: {type: string}
+        windLevel: {type: string}
+        airQuality: {type: string}
+        warningCodes:
+          type: array
+          items: {type: string}
+        updatedAt: {type: string, format: date-time}
+    NotificationPreferences:
+      type: object
+      properties:
+        shiftReminders:
+          type: array
+          items: {type: integer, minimum: 0, maximum: 10080}
+        weatherEnabled: {type: boolean}
+        scheduleChangesEnabled: {type: boolean}
+        approvalEnabled: {type: boolean}
+        quietHours:
+          type: [object, 'null']
+          properties:
+            start: {type: string}
+            end: {type: string}
+        channels: {type: object, additionalProperties: {type: boolean}}
+    ShareSnapshotInput:
+      type: object
+      required: [rangeStart, rangeEnd, templateCode, privacyOptions]
+      properties:
+        rangeStart: {type: string, format: date}
+        rangeEnd: {type: string, format: date}
+        templateCode: {type: string}
+        privacyOptions:
+          type: object
+          properties:
+            showDisplayName: {type: boolean}
+            showTime: {type: boolean}
+            showWeather: {type: boolean}
+            showLocation: {type: boolean}
+            showNote: {type: boolean}
+    AsyncJob:
+      type: object
+      properties:
+        id: {type: string, format: uuid}
+        type: {type: string}
+        status: {type: string, enum: [pending, running, completed, failed]}
+        progress: {type: integer, minimum: 0, maximum: 100}
+    AdminDashboard:
+      type: object
+      additionalProperties: true
+    AuditLog:
+      type: object
+      properties:
+        id: {type: integer}
+        actorDisplayName: {type: string}
+        action: {type: string}
+        resourceType: {type: string}
+        resourceId: {type: [string, 'null']}
+        beforeSummary: {type: [object, 'null'], additionalProperties: true}
+        afterSummary: {type: [object, 'null'], additionalProperties: true}
+        createdAt: {type: string, format: date-time}
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: object
+          required: [code, message, requestId]
+          properties:
+            code: {type: string}
+            message: {type: string}
+            requestId: {type: string}
+            details: {type: [object, 'null'], additionalProperties: true}

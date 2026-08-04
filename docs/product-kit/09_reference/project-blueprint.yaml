@@ -1,0 +1,46 @@
+project:
+  name: 工作日历
+  slug: work-calendar
+  locale: zh-CN
+  defaultTimezone: Asia/Shanghai
+  surfaces:
+    - wechat-mini-program
+    - android-ios-app
+    - web-admin
+  coreDomains:
+    - identity
+    - workspace
+    - shift-template
+    - schedule-rule
+    - schedule-instance
+    - temporary-change
+    - weather
+    - notification
+    - sharing
+    - reporting
+    - rbac
+    - audit
+architecture:
+  style: modular-monolith-with-workers
+  language: TypeScript
+  database: PostgreSQL
+  cacheQueue: Redis
+  objectStorage: S3-compatible
+  api: REST-OpenAPI
+  monorepo: true
+qualityGates:
+  - lint
+  - typecheck
+  - unit-tests
+  - integration-tests
+  - e2e-tests
+  - build
+  - migration-check
+  - security-scope-tests
+mustNotBreak:
+  - cross-midnight-shifts
+  - one-day-temporary-overrides
+  - workspace-data-isolation
+  - notification-idempotency
+  - share-privacy-filtering
+  - audit-immutability

@@ -1,0 +1,22 @@
+{
+  "name": "work-calendar",
+  "version": "0.1.0",
+  "private": true,
+  "description": "工作日历微信小程序版（第一轮）",
+  "scripts": {
+    "gen:tokens": "node scripts/gen-tokens.mjs",
+    "sync:types": "node scripts/sync-miniprogram-types.mjs",
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "pnpm -r lint",
+    "test": "pnpm -r test",
+    "test:integration": "pnpm --filter @workcal/api test:integration",
+    "db:migrate": "pnpm --filter @workcal/api db:migrate",
+    "db:seed": "pnpm --filter @workcal/api db:seed",
+    "dev:api": "pnpm --filter @workcal/api dev",
+    "smoke:api": "powershell -ExecutionPolicy Bypass -File scripts/smoke-api.ps1"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

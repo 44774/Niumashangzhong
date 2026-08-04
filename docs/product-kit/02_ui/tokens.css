@@ -1,0 +1,45 @@
+:root {
+  --wc-brand-primary: #1f6feb;
+  --wc-brand-primary-hover: #1759c7;
+  --wc-brand-cyan: #00c4cf;
+  --wc-brand-teal: #10b981;
+  --wc-brand-navy: #0f2b4d;
+  --wc-shift-morning: #10b981;
+  --wc-shift-evening: #2f80ed;
+  --wc-shift-night: #7c3aed;
+  --wc-shift-rest: #94a3b8;
+  --wc-shift-leave: #f59e0b;
+  --wc-text-primary: #14213d;
+  --wc-text-secondary: #5b6b82;
+  --wc-text-tertiary: #8a98aa;
+  --wc-surface-page: #f5f9ff;
+  --wc-surface-card: #ffffff;
+  --wc-border: #e4ecf5;
+  --wc-radius-sm: 6px;
+  --wc-radius-md: 10px;
+  --wc-radius-lg: 14px;
+  --wc-radius-xl: 18px;
+  --wc-radius-pill: 999px;
+  --wc-shadow-sm: 0 2px 8px rgba(30, 70, 120, 0.08);
+  --wc-shadow-md: 0 8px 24px rgba(30, 70, 120, 0.10);
+  --wc-shadow-lg: 0 18px 48px rgba(30, 70, 120, 0.14);
+  --wc-space-1: 4px;
+  --wc-space-2: 8px;
+  --wc-space-3: 12px;
+  --wc-space-4: 16px;
+  --wc-space-5: 20px;
+  --wc-space-6: 24px;
+  --wc-space-8: 32px;
+  --wc-font-sans: system-ui, -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+
+[data-theme="dark"] {
+  --wc-text-primary: #eef6ff;
+  --wc-text-secondary: #b2c2d6;
+  --wc-text-tertiary: #8495aa;
+  --wc-surface-page: #081522;
+  --wc-surface-card: #102235;
+  --wc-border: #213950;
+  --wc-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.25);
+  --wc-shadow-md: 0 8px 24px rgba(0, 0, 0, 0.32);
+}

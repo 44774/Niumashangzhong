@@ -1,0 +1,21 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: workcal-db
+    environment:
+      POSTGRES_USER: workcal
+      POSTGRES_PASSWORD: workcal_dev
+      POSTGRES_DB: workcal
+    ports:
+      - "5432:5432"
+    volumes:
+      - workcal_pgdata:/var/lib/postgresql/data
+      - ./database/docker-init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U workcal -d workcal"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  workcal_pgdata:

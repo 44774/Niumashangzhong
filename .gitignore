@@ -1,0 +1,15 @@
+node_modules/
+dist/
+.env
+.env.local
+*.log
+.DS_Store
+coverage/
+.turbo/
+miniprogram_npm/
+apps/miniprogram/typings/*
+!apps/miniprogram/typings/.gitkeep
+.wechatide/
+temp/
+api-smoke.log
+api-smoke.err

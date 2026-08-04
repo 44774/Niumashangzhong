@@ -1,0 +1,105 @@
+work-calendar-codex-kit/
+├── 00_start
+│   ├── CODEX_MASTER_PROMPT.md
+│   ├── COPY_INTO_REPOSITORY.md
+│   ├── DECISIONS_AND_ASSUMPTIONS.md
+│   └── START_HERE.md
+├── 01_product
+│   ├── BUSINESS_RULES.md
+│   ├── FEATURE_MATRIX.md
+│   ├── INFORMATION_ARCHITECTURE_AND_FLOWS.md
+│   ├── PRD.md
+│   ├── SCREEN_INVENTORY.csv
+│   └── USER_STORIES.md
+├── 02_ui
+│   ├── ACCESSIBILITY_AND_CONTENT.md
+│   ├── ASSET_USAGE.md
+│   ├── COMPONENT_SPECS.md
+│   ├── design-tokens.json
+│   ├── SCREEN_SPECS_ADMIN.md
+│   ├── SCREEN_SPECS_APP.md
+│   ├── SCREEN_SPECS_MINIPROGRAM.md
+│   ├── tokens.css
+│   └── UI_DESIGN_SYSTEM.md
+├── 03_architecture
+│   ├── ARCHITECTURE.md
+│   ├── DEPLOYMENT_AND_ENV.md
+│   ├── MONOREPO_STRUCTURE.md
+│   ├── RECOMMENDED_STACK.md
+│   └── SECURITY_PRIVACY.md
+├── 04_data_api
+│   ├── API_CONVENTIONS.md
+│   ├── DATA_MODEL.md
+│   ├── openapi.yaml
+│   └── schema.sql
+├── 05_quality
+│   ├── ACCEPTANCE_CRITERIA.md
+│   ├── seed-data.json
+│   ├── TEST_CASES.csv
+│   └── TEST_PLAN.md
+├── 06_assets
+│   ├── logo
+│   │   ├── android-chrome-192x192.png
+│   │   ├── android-chrome-512x512.png
+│   │   ├── app-icon-512.png
+│   │   ├── apple-touch-icon.png
+│   │   ├── favicon-16x16.png
+│   │   ├── favicon-32x32.png
+│   │   ├── favicon-48x48.png
+│   │   ├── favicon.ico
+│   │   ├── work-calendar-icon-1024.png
+│   │   ├── work-calendar-icon-120.png
+│   │   ├── work-calendar-icon-128.png
+│   │   ├── work-calendar-icon-144.png
+│   │   ├── work-calendar-icon-152.png
+│   │   ├── work-calendar-icon-16.png
+│   │   ├── work-calendar-icon-167.png
+│   │   ├── work-calendar-icon-180.png
+│   │   ├── work-calendar-icon-192.png
+│   │   ├── work-calendar-icon-24.png
+│   │   ├── work-calendar-icon-256.png
+│   │   ├── work-calendar-icon-32.png
+│   │   ├── work-calendar-icon-40.png
+│   │   ├── work-calendar-icon-48.png
+│   │   ├── work-calendar-icon-512.png
+│   │   ├── work-calendar-icon-58.png
+│   │   ├── work-calendar-icon-60.png
+│   │   ├── work-calendar-icon-64.png
+│   │   ├── work-calendar-icon-72.png
+│   │   ├── work-calendar-icon-76.png
+│   │   ├── work-calendar-icon-80.png
+│   │   ├── work-calendar-icon-87.png
+│   │   ├── work-calendar-icon-96.png
+│   │   ├── work-calendar-icon-monochrome.svg
+│   │   ├── work-calendar-icon.png
+│   │   ├── work-calendar-icon.svg
+│   │   ├── work-calendar-logo-horizontal.png
+│   │   └── work-calendar-logo-horizontal.svg
+│   ├── mockups
+│   │   ├── work-calendar-admin-dashboard.png
+│   │   ├── work-calendar-mini-program.png
+│   │   └── work-calendar-mobile-app.png
+│   ├── ASSET_LICENSE.md
+│   └── README.md
+├── 07_codex_prompts
+│   ├── PHASE_1_FOUNDATION.md
+│   ├── PHASE_2_SCHEDULE_API.md
+│   ├── PHASE_3_CLIENTS.md
+│   ├── PHASE_4_INTEGRATIONS.md
+│   ├── PHASE_5_RELEASE.md
+│   └── REVIEW_CHECKLIST.md
+├── 08_operations
+│   ├── ADMIN_OPERATIONS.md
+│   ├── ANALYTICS_EVENTS.md
+│   ├── ROLES_AND_PERMISSIONS.md
+│   └── WEATHER_NOTIFICATIONS_SHARING.md
+├── 09_reference
+│   ├── CHANGELOG.md
+│   ├── DIRECTORY_TREE.txt
+│   ├── FILE_MANIFEST.csv
+│   ├── project-blueprint.yaml
+│   ├── SHA256SUMS.txt
+│   └── VERSION.json
+├── AGENTS.md
+├── PACKAGE_PREVIEW.png
+└── README.md

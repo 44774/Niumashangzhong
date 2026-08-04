@@ -1,0 +1,17 @@
+{
+  "name": "work-calendar-codex-kit",
+  "version": "1.0.0",
+  "createdAt": "2026-08-02T23:21:00+08:00",
+  "language": "zh-CN",
+  "contains": [
+    "product-spec",
+    "ui-spec",
+    "architecture",
+    "database-schema",
+    "openapi",
+    "test-plan",
+    "codex-prompts",
+    "logo-assets",
+    "mockups"
+  ]
+}

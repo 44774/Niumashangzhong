@@ -1,0 +1,133 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "meta": {
+    "name": "Work Calendar Design Tokens",
+    "version": "1.0.0",
+    "baseUnit": "px"
+  },
+  "color": {
+    "brand": {
+      "primary": "#1F6FEB",
+      "primaryHover": "#1759C7",
+      "primaryPressed": "#124AA8",
+      "cyan": "#00C4CF",
+      "teal": "#10B981",
+      "navy": "#0F2B4D"
+    },
+    "shift": {
+      "morning": "#10B981",
+      "evening": "#2F80ED",
+      "night": "#7C3AED",
+      "rest": "#94A3B8",
+      "leave": "#F59E0B",
+      "training": "#06B6D4"
+    },
+    "semantic": {
+      "success": "#16A34A",
+      "warning": "#F59E0B",
+      "danger": "#EF4444",
+      "info": "#2F80ED"
+    },
+    "text": {
+      "primary": "#14213D",
+      "secondary": "#5B6B82",
+      "tertiary": "#8A98AA",
+      "inverse": "#FFFFFF",
+      "link": "#1F6FEB"
+    },
+    "surface": {
+      "page": "#F5F9FF",
+      "card": "#FFFFFF",
+      "raised": "#FFFFFF",
+      "subtle": "#F0F6FF",
+      "mask": "rgba(15,43,77,0.45)"
+    },
+    "border": {
+      "default": "#E4ECF5",
+      "strong": "#CFDBE9",
+      "focus": "#7DB3FF"
+    }
+  },
+  "typography": {
+    "fontFamily": {
+      "sans": "system-ui, -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif",
+      "mono": "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
+    },
+    "fontSize": {
+      "xs": 12,
+      "sm": 13,
+      "md": 14,
+      "lg": 16,
+      "xl": 18,
+      "2xl": 22,
+      "3xl": 28,
+      "4xl": 36
+    },
+    "lineHeight": {
+      "tight": 1.25,
+      "normal": 1.5,
+      "relaxed": 1.7
+    },
+    "fontWeight": {
+      "regular": 400,
+      "medium": 500,
+      "semibold": 600,
+      "bold": 700
+    }
+  },
+  "spacing": {
+    "0": 0,
+    "1": 4,
+    "2": 8,
+    "3": 12,
+    "4": 16,
+    "5": 20,
+    "6": 24,
+    "8": 32,
+    "10": 40,
+    "12": 48,
+    "16": 64
+  },
+  "radius": {
+    "sm": 6,
+    "md": 10,
+    "lg": 14,
+    "xl": 18,
+    "2xl": 24,
+    "pill": 999
+  },
+  "shadow": {
+    "sm": "0 2px 8px rgba(30,70,120,0.08)",
+    "md": "0 8px 24px rgba(30,70,120,0.10)",
+    "lg": "0 18px 48px rgba(30,70,120,0.14)",
+    "focus": "0 0 0 3px rgba(31,111,235,0.22)"
+  },
+  "size": {
+    "touchMin": 44,
+    "buttonHeightSm": 36,
+    "buttonHeightMd": 44,
+    "buttonHeightLg": 52,
+    "inputHeight": 44,
+    "sidebarWidth": 224,
+    "contentMax": 1440
+  },
+  "motion": {
+    "fast": "120ms",
+    "normal": "200ms",
+    "slow": "320ms",
+    "easing": "cubic-bezier(0.2, 0, 0, 1)"
+  },
+  "breakpoint": {
+    "mobile": 375,
+    "tablet": 768,
+    "desktop": 1200,
+    "wide": 1440
+  },
+  "zIndex": {
+    "base": 0,
+    "sticky": 100,
+    "dropdown": 500,
+    "modal": 1000,
+    "toast": 1200
+  }
+}

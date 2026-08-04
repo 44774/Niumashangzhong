@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-labelledby="title desc">
+<title id="title">工作日历应用图标</title><desc id="desc">蓝绿渐变圆角方形中的白色日历和勾选符号</desc>
+<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1F6FEB"/><stop offset=".68" stop-color="#00C4CF"/><stop offset="1" stop-color="#10B981"/></linearGradient></defs>
+<rect width="1024" height="1024" rx="246" fill="url(#g)"/>
+<rect x="226" y="256" width="572" height="522" rx="76" fill="none" stroke="#fff" stroke-width="56"/>
+<path d="M369 184v135M655 184v135M260 399h503" fill="none" stroke="#fff" stroke-width="46" stroke-linecap="round"/>
+<g fill="#fff"><circle cx="348" cy="512" r="27"/><circle cx="492" cy="512" r="27"/><circle cx="636" cy="512" r="27"/><circle cx="348" cy="626" r="27"/><circle cx="492" cy="626" r="27"/></g>
+<path d="M572 694l71 61 122-143" fill="none" stroke="#fff" stroke-width="48" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
