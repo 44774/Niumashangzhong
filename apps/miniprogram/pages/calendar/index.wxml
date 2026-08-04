@@ -10,20 +10,19 @@
     </view>
   </view>
 
-  <calendar-month
-    cells="{{cells}}"
-    selected-date="{{selectedDate}}"
-    shift-map="{{shiftMap}}"
-    legend="{{legend}}"
-    bind:datetap="onDateTap"
-    bind:datelongpress="onDateLongPress"
-  />
-
-  <view class="float-area" wx:if="{{showBackToday}}">
-    <view class="back-today-btn" bindtap="goToday">今天</view>
+  <view class="calendar-wrap">
+    <calendar-month
+      cells="{{cells}}"
+      selected-date="{{selectedDate}}"
+      shift-map="{{shiftMap}}"
+      legend="{{legend}}"
+      bind:datetap="onDateTap"
+      bind:datelongpress="onDateLongPress"
+    />
+    <view class="back-today-btn" wx:if="{{showBackToday}}" bindtap="goToday">今天</view>
   </view>
-  <view class="section-gap" wx:else></view>
 
+  <view class="section-gap"></view>
   <view class="card today-card">
     <view class="row-between">
       <text class="title-card">{{selectedTitle}}</text>

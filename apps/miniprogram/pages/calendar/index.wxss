@@ -33,29 +33,27 @@
   border: none;
 }
 
-.float-area {
+.calendar-wrap {
   position: relative;
-  height: 160rpx;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  padding-right: 32rpx;
-  z-index: var(--wc-zIndex-sticky);
 }
 
 .back-today-btn {
-  width: 112rpx;
-  height: 112rpx;
+  position: absolute;
+  right: 16rpx;
+  bottom: 16rpx;
+  width: 96rpx;
+  height: 96rpx;
   border-radius: 50%;
   background: #ffffff;
   border: 2rpx solid var(--wc-color-brand-primary);
   color: var(--wc-color-brand-primary);
-  font-size: 28rpx;
+  font-size: 26rpx;
   font-weight: 600;
   display: flex;
   align-items: center;
   justify-content: center;
   box-shadow: var(--wc-shadow-sm);
+  z-index: var(--wc-zIndex-sticky);
 }
 
 .month-bar .row {
