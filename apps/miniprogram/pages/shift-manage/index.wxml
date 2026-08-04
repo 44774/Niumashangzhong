@@ -65,6 +65,15 @@
           bindtap="onColorPick"
         ></view>
       </view>
+      <text class="field-label">自定义颜色</text>
+      <input
+        class="field-input color-input"
+        value="{{form.color}}"
+        bindinput="onColorInput"
+        placeholder="#RRGGBB，例如 #FF6B35"
+        maxlength="7"
+      />
+      <view class="color-preview" style="background: {{form.color}};"></view>
 
       <block wx:if="{{form.kind !== 'rest'}}">
         <time-range-picker

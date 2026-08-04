@@ -49,6 +49,7 @@ console.log(
     legend: (await p.data("legend"))?.length,
     todaySummary: (await p.data("todaySummary"))?.shiftSnapshot?.name ?? null,
     changeDates: await p.data("changeDates"),
+    todayWeather: (await p.data("todayWeather"))?.conditionText ?? null,
     error: await p.data("error"),
     loading: await p.data("loading"),
   }),
@@ -59,6 +60,20 @@ await sleep(2500);
 console.log("after nextMonth:", await p.data("monthLabel"));
 await p.callMethod("goToday");
 await sleep(1500);
+await p.callMethod("onDateTap", { detail: { date: "2026-08-10" } });
+await sleep(1500);
+console.log("detail after tap:", (await miniProgram.currentPage())?.path);
+await miniProgram.navigateBack();
+await sleep(1500);
+p = await miniProgram.currentPage();
+console.log(
+  "back state:",
+  JSON.stringify({
+    monthLabel: await p.data("monthLabel"),
+    selectedDate: await p.data("selectedDate"),
+    todayWeather: (await p.data("todayWeather"))?.conditionText ?? null,
+  }),
+);
 
 // 3. 周视图
 await miniProgram.switchTab("/pages/week/index");

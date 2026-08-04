@@ -12,7 +12,7 @@ Component({
 
   observers: {
     color(color: string) {
-      this.setData({ bgColor: `${color}1A` });
+      this.setData({ bgColor: `${color}33` });
     },
   },
 });

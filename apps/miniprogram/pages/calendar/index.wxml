@@ -51,6 +51,14 @@
         <text wx:if="{{todayLocation}}">{{todayLocation}}</text>
         <text wx:if="{{todayDuration}}">{{todayDuration}}</text>
       </view>
+      <view class="weather-line" wx:if="{{todayWeather}}">
+        <text class="weather-condition">{{todayWeather.conditionText}}</text>
+        <text class="weather-temp">{{todayWeather.temperatureMin}}~{{todayWeather.temperatureMax}}°C</text>
+        <text wx:if="{{todayWeather.precipitationProbability != null}}" class="weather-rain">降水 {{todayWeather.precipitationProbability}}%</text>
+      </view>
+      <view class="weather-line" wx:elif="{{weatherError}}">
+        <text class="weather-fallback">暂时无法获取天气，不影响查看班表</text>
+      </view>
       <view class="row today-actions">
         <button class="btn-secondary today-action" bindtap="changeToday">临时改班</button>
         <button class="btn-secondary today-action" bindtap="shareToday">分享班表</button>

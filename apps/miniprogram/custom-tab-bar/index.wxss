@@ -4,8 +4,9 @@
   right: 0;
   bottom: 0;
   display: flex;
-  background: var(--wc-color-surface-card);
+  background: #ffffff;
   border-top: 1rpx solid var(--wc-color-border-default);
+  box-shadow: 0 -2rpx 16rpx rgba(30, 70, 120, 0.06);
   padding-bottom: env(safe-area-inset-bottom);
   z-index: var(--wc-zIndex-sticky);
 }
@@ -23,6 +24,12 @@
 .tab-item.active {
   color: var(--wc-color-brand-primary);
   font-weight: 600;
+}
+
+.tab-item.active .tab-label {
+  background: var(--wc-color-surface-subtle);
+  border-radius: var(--wc-radius-pill);
+  padding: 0 28rpx;
 }
 
 .tab-label {

@@ -123,6 +123,15 @@ Page({
     this.setData({ form: { ...this.data.form, color: event.currentTarget.dataset.color as string } });
   },
 
+  onColorInput(event: WechatMiniprogram.Input) {
+    const value = event.detail.value.trim();
+    if (/^#[0-9A-Fa-f]{6}$/.test(value)) {
+      this.setData({ form: { ...this.data.form, color: value.toUpperCase() } });
+    } else if (!value) {
+      this.setData({ form: { ...this.data.form, color: "" } });
+    }
+  },
+
   onTimeChange(event: WechatMiniprogram.CustomEvent<{ field: string; value: unknown }>) {
     this.setData({ form: { ...this.data.form, [event.detail.field]: event.detail.value } });
   },
@@ -137,6 +146,10 @@ Page({
     const form = this.data.form;
     if (!form.name.trim() || !form.shortName.trim()) {
       wx.showToast({ title: "请填写名称与简称", icon: "none" });
+      return;
+    }
+    if (!/^#[0-9A-Fa-f]{6}$/.test(form.color)) {
+      wx.showToast({ title: "颜色格式不正确，请输入 #RRGGBB", icon: "none" });
       return;
     }
     this.setData({ saving: true });

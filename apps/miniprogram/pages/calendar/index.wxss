@@ -61,6 +61,37 @@
   margin-top: 12rpx;
 }
 
+.weather-line {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  margin-top: 12rpx;
+  background: var(--wc-color-surface-subtle);
+  border-radius: var(--wc-radius-md);
+  padding: 16rpx 20rpx;
+}
+
+.weather-condition {
+  font-size: 28rpx;
+  font-weight: 600;
+}
+
+.weather-temp {
+  color: var(--wc-color-brand-primary);
+  font-size: 28rpx;
+  font-weight: 600;
+}
+
+.weather-rain {
+  color: var(--wc-color-text-secondary);
+  font-size: 24rpx;
+}
+
+.weather-fallback {
+  color: var(--wc-color-text-secondary);
+  font-size: 24rpx;
+}
+
 .today-actions {
   gap: 20rpx;
   margin-top: 20rpx;

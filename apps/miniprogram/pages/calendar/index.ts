@@ -22,6 +22,8 @@ import {
   setCalendarWindow,
   type CalendarWindowData,
 } from "../../services/calendar-cache";
+import { getWeatherCached } from "../../services/weather-cache";
+import type { WeatherForecast } from "../../typings/api";
 
 Page({
   data: {
@@ -38,6 +40,9 @@ Page({
     todayLocation: "",
     todayDuration: "",
     changeDates: [] as string[],
+    todayWeather: null as WeatherForecast | null,
+    weatherLoading: true,
+    weatherError: false,
     loading: true,
     error: false,
     errorMessage: "",
@@ -49,7 +54,9 @@ Page({
       wx.reLaunch({ url: "/pages/login/index" });
       return;
     }
-    this.initMonth();
+    if (!this.data.year) {
+      this.initMonth();
+    }
     this.load();
   },
 
@@ -77,11 +84,12 @@ Page({
     this.setData({ loading: !cached, error: false });
     try {
       const today = todayString();
-      const [templates, schedules, holidayMap, changes] = await Promise.all([
+      const [templates, schedules, holidayMap, changes, todayWeatherList] = await Promise.all([
         api.shiftTemplates(true),
         loadRange(from, to),
         ensureHolidayRange(from, to),
         api.changeRequestsInRange(from, to).catch(() => []),
+        getWeatherCached(today, today).catch(() => []),
       ]);
       const shiftMap: Record<string, CalendarDayShift[]> = {};
       for (const item of schedules) {
@@ -115,6 +123,9 @@ Page({
       setCalendarWindow(this.data.year, this.data.month, windowData);
       this.applyWindow(windowData);
       this.setData({
+        todayWeather: todayWeatherList[0] ?? null,
+        weatherLoading: false,
+        weatherError: false,
         loading: false,
       });
     } catch (err) {
@@ -125,7 +136,7 @@ Page({
           errorMessage: (err as Error).message,
         });
       } else {
-        this.setData({ loading: false });
+        this.setData({ loading: false, weatherLoading: false, weatherError: true });
       }
     }
   },
