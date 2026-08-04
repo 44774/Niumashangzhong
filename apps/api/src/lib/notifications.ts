@@ -1,5 +1,10 @@
 import { and, eq, inArray, isNull, lte } from "drizzle-orm";
-import { addDays, generateCycleSlots, zonedTimeToIso } from "@workcal/schedule-engine";
+import {
+  addDays,
+  generateCycleSlots,
+  todayInTimezone,
+  zonedTimeToIso,
+} from "@workcal/schedule-engine";
 import type { Db, Tx } from "../db/client.js";
 import {
   notificationJobs,
@@ -182,11 +187,15 @@ export async function extendRules(db: Db): Promise<void> {
     .from(scheduleRules)
     .where(and(eq(scheduleRules.isActive, true), isNull(scheduleRules.deletedAt)));
   for (const rule of activeRules) {
+    const horizonEnd = addDays(rule.startDate, rule.generationHorizonDays - 1);
+    const rollEnd = addDays(todayInTimezone(rule.timezone), 90);
+    const candidate = horizonEnd > rollEnd ? horizonEnd : rollEnd;
+    const target = rule.endDate && rule.endDate < candidate ? rule.endDate : candidate;
     const slots = generateCycleSlots({
       startDate: rule.startDate,
-      endDate: rule.endDate,
+      endDate: target,
       sequence: rule.sequence.map((s) => s.shiftTemplateId),
-      generationHorizonDays: rule.generationHorizonDays,
+      generationHorizonDays: 400,
     });
     const existing = await db
       .select({ businessDate: scheduleInstances.businessDate })

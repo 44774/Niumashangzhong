@@ -143,6 +143,7 @@ Page({
     const index = Number(event.currentTarget.dataset.index);
     const option = this.data.rangeOptions[index];
     if (!option) return;
+    this.resetPoster();
     if (index === 3) {
       this.setData({
         rangeIndex: index,
@@ -159,6 +160,7 @@ Page({
     const customStart = String(event.detail.value);
     this.setData({ customStart });
     if (this.data.rangeIndex === 3) {
+      this.resetPoster();
       this.setData({ rangeStart: customStart });
       this.load();
     }
@@ -168,6 +170,7 @@ Page({
     const customEnd = String(event.detail.value);
     this.setData({ customEnd });
     if (this.data.rangeIndex === 3) {
+      this.resetPoster();
       this.setData({ rangeEnd: customEnd });
       this.load();
     }
@@ -178,7 +181,12 @@ Page({
     const privacy = { ...this.data.privacy, [key]: Boolean(event.detail.value) };
     wx.setStorageSync(PRIVACY_KEY, privacy);
     this.setData({ privacy });
+    this.resetPoster();
     this.refreshPreview();
+  },
+
+  resetPoster() {
+    this.setData({ posterPath: "", snapshot: null, canvasVisible: false });
   },
 
   refreshPreview() {

@@ -13,9 +13,8 @@ Page({
     templateNames: [] as string[],
     sequence: [] as Array<{ templateId: string; templateIndex: number; name: string }>,
     startDate: "",
-    endStrategy: "open" as "open" | "endDate" | "days",
+    endStrategy: "open" as "open" | "endDate",
     endDate: "",
-    days: 90,
     preview: [] as Array<{ date: string; name: string; color: string }>,
     submitting: false,
   },
@@ -84,11 +83,7 @@ Page({
   },
 
   onStrategyChange(event: WechatMiniprogram.TouchEvent) {
-    this.setData({ endStrategy: event.currentTarget.dataset.value as "open" | "endDate" | "days" });
-  },
-
-  onDaysInput(event: WechatMiniprogram.Input) {
-    this.setData({ days: Number(event.detail.value) || 1 });
+    this.setData({ endStrategy: event.currentTarget.dataset.value as "open" | "endDate" });
   },
 
   refreshPreview() {
@@ -110,7 +105,7 @@ Page({
   },
 
   async submit() {
-    const { sequence, startDate, endStrategy, endDate, days } = this.data;
+    const { sequence, startDate, endStrategy, endDate } = this.data;
     if (sequence.length === 0) {
       wx.showToast({ title: "请至少添加一个班次", icon: "none" });
       return;
@@ -119,7 +114,7 @@ Page({
       wx.showToast({ title: "请为序列中的每一项选择班次", icon: "none" });
       return;
     }
-    const horizon = endStrategy === "days" ? Math.min(366, Math.max(1, days)) : 90;
+    const horizon = 90;
     const input: ScheduleRuleInput = {
       ownerUserId: "",
       startDate,

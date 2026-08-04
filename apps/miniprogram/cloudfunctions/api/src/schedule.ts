@@ -3,6 +3,7 @@ import {
   findOverlapConflicts,
   generateCycleSlots,
   intervalsOverlap,
+  todayInTimezone,
   zonedTimeToIso,
 } from "@workcal/schedule-engine";
 import { db, _, getWorkspace, requireWorkspace, writeAudit } from "./db";
@@ -131,6 +132,8 @@ export async function list(
   if (payload.from > payload.to) {
     throw new CloudError("VALIDATION_ERROR", "from 不能晚于 to");
   }
+  // 循环规则按需向后滚动补齐，保证“设置一次、一直循环”
+  await extendRules(openid, payload.workspaceId, payload.to);
   const res = await db
     .collection("scheduleInstances")
     .where({
@@ -142,6 +145,93 @@ export async function list(
     .limit(1000)
     .get();
   return res.data.map(toScheduleInstance);
+}
+
+function diffDays(from: string, to: string): number {
+  const [fy, fm, fd] = from.split("-").map(Number);
+  const [ty, tm, td] = to.split("-").map(Number);
+  return Math.round(
+    (Date.UTC(ty ?? 0, (tm ?? 1) - 1, td ?? 1) - Date.UTC(fy ?? 0, (fm ?? 1) - 1, fd ?? 1)) /
+      86_400_000,
+  );
+}
+
+/** 把活跃循环规则补齐到 upToDate（不超过今天 + 400 天，避免单次调用过大）。 */
+export async function extendRules(
+  openid: string,
+  workspaceId: string,
+  upToDate: string,
+): Promise<void> {
+  const today = todayInTimezone("Asia/Shanghai");
+  const cap = addDays(today, 400);
+  const target = upToDate > cap ? cap : upToDate;
+  const rulesRes = await db
+    .collection("scheduleRules")
+    .where({ workspaceId, ownerOpenid: openid, isActive: true })
+    .limit(100)
+    .get();
+  for (const rule of rulesRes.data) {
+    if (rule.endDate && rule.endDate < rule.startDate) continue;
+    const end = rule.endDate && rule.endDate < target ? rule.endDate : target;
+    const days = diffDays(rule.startDate, end) + 1;
+    if (days <= 0) continue;
+    const slots = generateCycleSlots({
+      startDate: rule.startDate,
+      endDate: end,
+      sequence: rule.sequence.map((s: any) => s.shiftTemplateId),
+      generationHorizonDays: Math.min(days, 400),
+    });
+    const ids = Array.from(new Set(slots.map((s) => s.shiftTemplateId)));
+    const tplRes = await db
+      .collection("shiftTemplates")
+      .where({ workspaceId, _id: _.in(ids) })
+      .limit(100)
+      .get();
+    const tplMap = new Map(tplRes.data.map((t: any) => [t._id, t]));
+    const existingRes = await db
+      .collection("scheduleInstances")
+      .where({
+        workspaceId,
+        ownerOpenid: openid,
+        businessDate: _.gte(rule.startDate).and(_.lte(end)),
+      })
+      .limit(1000)
+      .get();
+    const occupied = new Set(existingRes.data.map((r: any) => r.businessDate));
+    const now = nowIso();
+    const inserts: Promise<unknown>[] = [];
+    for (const slot of slots) {
+      if (occupied.has(slot.date)) continue;
+      const tpl = tplMap.get(slot.shiftTemplateId);
+      if (!tpl) continue;
+      const snap = snapshotFromTemplate(tpl);
+      const times = instanceTimes(slot.date, snap, rule.timezone ?? "Asia/Shanghai");
+      inserts.push(
+        db.collection("scheduleInstances").add({
+          data: {
+            workspaceId,
+            ownerOpenid: openid,
+            businessDate: slot.date,
+            timezone: rule.timezone ?? "Asia/Shanghai",
+            startsAt: times.startsAt,
+            endsAt: times.endsAt,
+            kind: snap.kind,
+            shiftSnapshot: snap,
+            locationSnapshot: null,
+            note: null,
+            status: "scheduled",
+            source: "rule",
+            sourceRuleId: rule._id,
+            version: 1,
+            history: [],
+            createdAt: now,
+            updatedAt: now,
+          },
+        }),
+      );
+    }
+    await chunkAll(inserts, 20);
+  }
 }
 
 export async function create(openid: string, payload: any) {

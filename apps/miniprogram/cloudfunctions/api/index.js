@@ -991,12 +991,80 @@ async function list2(openid, payload) {
   if (payload.from > payload.to) {
     throw new CloudError("VALIDATION_ERROR", "from \u4E0D\u80FD\u665A\u4E8E to");
   }
+  await extendRules(openid, payload.workspaceId, payload.to);
   const res = await db.collection("scheduleInstances").where({
     workspaceId: payload.workspaceId,
     ownerOpenid: openid,
     businessDate: _.gte(payload.from).and(_.lte(payload.to))
   }).orderBy("businessDate", "asc").limit(1e3).get();
   return res.data.map(toScheduleInstance);
+}
+function diffDays(from, to) {
+  const [fy, fm, fd] = from.split("-").map(Number);
+  const [ty, tm, td] = to.split("-").map(Number);
+  return Math.round(
+    (Date.UTC(ty ?? 0, (tm ?? 1) - 1, td ?? 1) - Date.UTC(fy ?? 0, (fm ?? 1) - 1, fd ?? 1)) / 864e5
+  );
+}
+async function extendRules(openid, workspaceId, upToDate) {
+  const today = todayInTimezone("Asia/Shanghai");
+  const cap = addDays(today, 400);
+  const target = upToDate > cap ? cap : upToDate;
+  const rulesRes = await db.collection("scheduleRules").where({ workspaceId, ownerOpenid: openid, isActive: true }).limit(100).get();
+  for (const rule of rulesRes.data) {
+    if (rule.endDate && rule.endDate < rule.startDate) continue;
+    const end = rule.endDate && rule.endDate < target ? rule.endDate : target;
+    const days = diffDays(rule.startDate, end) + 1;
+    if (days <= 0) continue;
+    const slots = generateCycleSlots({
+      startDate: rule.startDate,
+      endDate: end,
+      sequence: rule.sequence.map((s) => s.shiftTemplateId),
+      generationHorizonDays: Math.min(days, 400)
+    });
+    const ids = Array.from(new Set(slots.map((s) => s.shiftTemplateId)));
+    const tplRes = await db.collection("shiftTemplates").where({ workspaceId, _id: _.in(ids) }).limit(100).get();
+    const tplMap = new Map(tplRes.data.map((t) => [t._id, t]));
+    const existingRes = await db.collection("scheduleInstances").where({
+      workspaceId,
+      ownerOpenid: openid,
+      businessDate: _.gte(rule.startDate).and(_.lte(end))
+    }).limit(1e3).get();
+    const occupied = new Set(existingRes.data.map((r) => r.businessDate));
+    const now = nowIso();
+    const inserts = [];
+    for (const slot of slots) {
+      if (occupied.has(slot.date)) continue;
+      const tpl = tplMap.get(slot.shiftTemplateId);
+      if (!tpl) continue;
+      const snap = snapshotFromTemplate(tpl);
+      const times = instanceTimes(slot.date, snap, rule.timezone ?? "Asia/Shanghai");
+      inserts.push(
+        db.collection("scheduleInstances").add({
+          data: {
+            workspaceId,
+            ownerOpenid: openid,
+            businessDate: slot.date,
+            timezone: rule.timezone ?? "Asia/Shanghai",
+            startsAt: times.startsAt,
+            endsAt: times.endsAt,
+            kind: snap.kind,
+            shiftSnapshot: snap,
+            locationSnapshot: null,
+            note: null,
+            status: "scheduled",
+            source: "rule",
+            sourceRuleId: rule._id,
+            version: 1,
+            history: [],
+            createdAt: now,
+            updatedAt: now
+          }
+        })
+      );
+    }
+    await chunkAll(inserts, 20);
+  }
 }
 async function create2(openid, payload) {
   await requireWorkspace(openid, payload.workspaceId);

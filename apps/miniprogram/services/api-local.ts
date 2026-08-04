@@ -27,6 +27,7 @@ import {
   DEFAULT_LOCAL_TEMPLATES,
   LOCAL_CHANGES_KEY,
   LOCAL_PREFS_KEY,
+  LOCAL_RULES_KEY,
   LOCAL_SCHEDULES_KEY,
   LOCAL_TEMPLATES_KEY,
   genId,
@@ -47,6 +48,16 @@ import {
 } from "../utils/holiday";
 
 const HOLIDAY_API = "https://timor.tech/api/holiday/year/";
+
+interface LocalRule {
+  id: string;
+  startDate: string;
+  endDate: string | null;
+  sequence: Array<{ shiftTemplateId: string }>;
+  timezone: string;
+  isActive: boolean;
+  version: number;
+}
 
 const LOCAL_WORKSPACE_ID = "local-workspace";
 
@@ -183,6 +194,7 @@ export const api = {
   },
 
   async schedules(from: string, to: string): Promise<ScheduleInstance[]> {
+    await extendLocalRules(to);
     const docs = read<LocalInstance[]>(LOCAL_SCHEDULES_KEY, []);
     return docs
       .filter((d) => d.businessDate >= from && d.businessDate <= to)
@@ -304,6 +316,18 @@ export const api = {
     const slots = cycleSlots(input.startDate, input.sequence.map((s) => s.shiftTemplateId), horizon);
     const occupied = new Set(docs.map((d) => d.businessDate));
     const now = new Date().toISOString();
+    const ruleId = genId("r");
+    const rules = read<LocalRule[]>(LOCAL_RULES_KEY, []);
+    rules.push({
+      id: ruleId,
+      startDate: input.startDate,
+      endDate: input.endDate ?? null,
+      sequence: input.sequence,
+      timezone: "Asia/Shanghai",
+      isActive: true,
+      version: 1,
+    });
+    write(LOCAL_RULES_KEY, rules);
     let generatedCount = 0;
     for (const slot of slots) {
       if (occupied.has(slot.date)) continue;
@@ -335,7 +359,7 @@ export const api = {
     write(LOCAL_SCHEDULES_KEY, docs);
     return {
       rule: {
-        id: genId("r"),
+        id: ruleId,
         ownerUserId: "local-user",
         name: input.name ?? null,
         startDate: input.startDate,
@@ -549,5 +573,66 @@ function assertNoConflict(
     );
   if (conflicts.length > 0) {
     throw new ApiError(409, "SCHEDULE_CONFLICT", "该时段与现有班次冲突");
+  }
+}
+
+function diffDays(from: string, to: string): number {
+  const [fy, fm, fd] = from.split("-").map(Number);
+  const [ty, tm, td] = to.split("-").map(Number);
+  return Math.round(
+    (Date.UTC(ty ?? 0, (tm ?? 1) - 1, td ?? 1) - Date.UTC(fy ?? 0, (fm ?? 1) - 1, fd ?? 1)) /
+      86_400_000,
+  );
+}
+
+/** 本地循环规则按需向后滚动补齐（不覆盖手动/临时排班）。 */
+async function extendLocalRules(upToDate: string): Promise<void> {
+  const rules = read<LocalRule[]>(LOCAL_RULES_KEY, []);
+  if (rules.length === 0) return;
+  const docs = read<LocalInstance[]>(LOCAL_SCHEDULES_KEY, []);
+  const templates = ensureTemplates();
+  const now = new Date().toISOString();
+  let changed = false;
+  for (const rule of rules) {
+    if (!rule.isActive) continue;
+    const end = rule.endDate && rule.endDate < upToDate ? rule.endDate : upToDate;
+    const days = diffDays(rule.startDate, end) + 1;
+    if (days <= 0) continue;
+    const slots = cycleSlots(
+      rule.startDate,
+      rule.sequence.map((s) => s.shiftTemplateId),
+      Math.min(days, 400),
+    );
+    const occupied = new Set(docs.map((d) => d.businessDate));
+    for (const slot of slots) {
+      if (occupied.has(slot.date)) continue;
+      const tpl = templates.find((t) => t.id === slot.shiftTemplateId);
+      if (!tpl) continue;
+      const snap = snapshotFromTemplate(tpl);
+      const times = instanceTimes(slot.date, snap);
+      docs.push({
+        id: genId("s"),
+        ownerUserId: "local-user",
+        businessDate: slot.date,
+        timezone: "Asia/Shanghai",
+        startsAt: times.startsAt,
+        endsAt: times.endsAt,
+        kind: snap.kind,
+        status: "scheduled",
+        source: "rule",
+        shiftSnapshot: snap,
+        locationSnapshot: null,
+        note: null,
+        version: 1,
+        history: [],
+        createdAt: now,
+        updatedAt: now,
+      });
+      occupied.add(slot.date);
+      changed = true;
+    }
+  }
+  if (changed) {
+    write(LOCAL_SCHEDULES_KEY, docs);
   }
 }

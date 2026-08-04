@@ -30,19 +30,14 @@
     <view class="card">
       <text class="title-card">结束策略</text>
       <view class="strategy-options">
-        <view class="strategy-option {{endStrategy === 'open' ? 'active' : ''}}" data-value="open" bindtap="onStrategyChange">长期（生成90天）</view>
+        <view class="strategy-option {{endStrategy === 'open' ? 'active' : ''}}" data-value="open" bindtap="onStrategyChange">长期循环</view>
         <view class="strategy-option {{endStrategy === 'endDate' ? 'active' : ''}}" data-value="endDate" bindtap="onStrategyChange">指定结束日期</view>
-        <view class="strategy-option {{endStrategy === 'days' ? 'active' : ''}}" data-value="days" bindtap="onStrategyChange">指定天数</view>
       </view>
       <block wx:if="{{endStrategy === 'endDate'}}">
         <text class="field-label">结束日期</text>
         <picker mode="date" value="{{endDate}}" bindchange="onEndDateChange">
           <view class="picker-box">{{endDate}}</view>
         </picker>
-      </block>
-      <block wx:if="{{endStrategy === 'days'}}">
-        <text class="field-label">生成天数（1-366）</text>
-        <input class="field-input" type="number" value="{{days}}" bindinput="onDaysInput" />
       </block>
     </view>
 
