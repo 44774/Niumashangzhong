@@ -485,6 +485,16 @@ export const api = {
     return status ? list.filter((c) => c.status === status) : list;
   },
 
+  async removeChangeRequest(id: string): Promise<{ removed: string }> {
+    const list = read<ChangeRequest[]>(LOCAL_CHANGES_KEY, []);
+    const next = list.filter((c) => c.id !== id);
+    if (next.length === list.length) {
+      throw new ApiError(404, "NOT_FOUND", "改班记录不存在");
+    }
+    write(LOCAL_CHANGES_KEY, next);
+    return { removed: id };
+  },
+
   async weather(
     from: string,
     to: string,
@@ -525,9 +535,6 @@ export const api = {
   },
 
   async createShareSnapshot(input: ShareSnapshotInput): Promise<ShareSnapshot> {
-    const instances = localMergedInstances(input.rangeStart, input.rangeEnd);
-    const weatherList = await this.weather(input.rangeStart, input.rangeEnd);
-    const holidayMap = await ensureLocalHoliday(input.rangeStart, input.rangeEnd);
     const privacy = {
       showDisplayName: Boolean(input.privacyOptions?.showDisplayName),
       showTime: Boolean(input.privacyOptions?.showTime),
@@ -535,30 +542,10 @@ export const api = {
       showLocation: Boolean(input.privacyOptions?.showLocation),
       showNote: Boolean(input.privacyOptions?.showNote),
     } as SharePrivacyOptions;
-    const weatherByDate = new Map(weatherList.map((w) => [w.date, w]));
-    const entries = instances.map((row) => {
-      const forecast = weatherByDate.get(row.businessDate);
-      return {
-        date: row.businessDate,
-        shiftName: row.shiftSnapshot.name,
-        shortName: row.shiftSnapshot.shortName,
-        kind: row.shiftSnapshot.kind,
-        color: row.shiftSnapshot.color,
-        timeText: privacy.showTime ? formatTimeRange(row.shiftSnapshot) : null,
-        location: privacy.showLocation ? (row.locationSnapshot?.name ?? null) : null,
-        note: privacy.showNote ? (row.note ?? null) : null,
-        weather:
-          privacy.showWeather && forecast
-            ? {
-                conditionText: forecast.conditionText,
-                conditionCode: forecast.conditionCode,
-                temperatureMin: forecast.temperatureMin,
-                temperatureMax: forecast.temperatureMax,
-              }
-            : null,
-      overtime: isOvertime(holidayMap, row.businessDate, row.kind) || undefined,
-    };
-    });
+    const entries =
+      Array.isArray(input.entries) && input.entries.length > 0
+        ? input.entries
+        : await buildLocalEntries(input, privacy);
     return {
       id: genId("sh"),
       ownerDisplayName: privacy.showDisplayName ? (getUser()?.displayName ?? null) : null,
@@ -571,6 +558,39 @@ export const api = {
     };
   },
 };
+
+async function buildLocalEntries(
+  input: ShareSnapshotInput,
+  privacy: SharePrivacyOptions,
+) {
+  const instances = localMergedInstances(input.rangeStart, input.rangeEnd);
+  const weatherList = await api.weather(input.rangeStart, input.rangeEnd);
+  const holidayMap = await ensureLocalHoliday(input.rangeStart, input.rangeEnd);
+  const weatherByDate = new Map(weatherList.map((w) => [w.date, w]));
+  return instances.map((row) => {
+    const forecast = weatherByDate.get(row.businessDate);
+    return {
+      date: row.businessDate,
+      shiftName: row.shiftSnapshot.name,
+      shortName: row.shiftSnapshot.shortName,
+      kind: row.shiftSnapshot.kind,
+      color: row.shiftSnapshot.color,
+      timeText: privacy.showTime ? formatTimeRange(row.shiftSnapshot) : null,
+      location: privacy.showLocation ? (row.locationSnapshot?.name ?? null) : null,
+      note: privacy.showNote ? (row.note ?? null) : null,
+      weather:
+        privacy.showWeather && forecast
+          ? {
+              conditionText: forecast.conditionText,
+              conditionCode: forecast.conditionCode,
+              temperatureMin: forecast.temperatureMin,
+              temperatureMax: forecast.temperatureMax,
+            }
+          : null,
+      overtime: isOvertime(holidayMap, row.businessDate, row.kind) || undefined,
+    };
+  });
+}
 
 function fetchHolidayYear(year: number): Promise<HolidayMap> {
   return new Promise((resolve, reject) => {

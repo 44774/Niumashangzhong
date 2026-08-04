@@ -1,9 +1,6 @@
 import {
   addDays,
   findOverlapConflicts,
-  generateCycleSlots,
-  intervalsOverlap,
-  todayInTimezone,
   zonedTimeToIso,
 } from "@workcal/schedule-engine";
 import { db, _, getWorkspace, requireWorkspace, writeAudit } from "./db";
@@ -67,10 +64,7 @@ async function resolveSnapshot(
 ) {
   if (shiftTemplateId) {
     const res = await db.collection("shiftTemplates").doc(shiftTemplateId).get();
-    if (!res.data) {
-      throw new CloudError("NOT_FOUND", "班次模板不存在", 404);
-    }
-    if (res.data.workspaceId !== workspaceId) {
+    if (!res.data || res.data.workspaceId !== workspaceId) {
       throw new CloudError("NOT_FOUND", "班次模板不存在", 404);
     }
     return snapshotFromTemplate(res.data);
@@ -116,12 +110,10 @@ export async function assertNoOverlap(
   }
 }
 
-async function chunkAll<T>(tasks: Promise<T>[], size: number): Promise<void> {
-  for (let i = 0; i < tasks.length; i += size) {
-    await Promise.all(tasks.slice(i, i + size));
-  }
-}
-
+/**
+ * 云端只返回手动/临时改班等真实写入的实例；
+ * 循环规则生成的日期由小程序端按规则本地计算，云端不再生成排班实例。
+ */
 export async function list(
   openid: string,
   payload: { workspaceId: string; from: string; to: string },
@@ -138,185 +130,12 @@ export async function list(
       workspaceId: payload.workspaceId,
       ownerOpenid: openid,
       businessDate: _.gte(payload.from).and(_.lte(payload.to)),
+      source: _.neq("rule"),
     })
     .orderBy("businessDate", "asc")
     .limit(1000)
     .get();
-  const userRes = await db.collection("users").doc(openid).get();
-  const activeRuleId = userRes.data?.activeRuleId;
-  const visible = activeRuleId
-    ? res.data.filter(
-        (r: any) => r.sourceRuleId === activeRuleId || r.source !== "rule",
-      )
-    : res.data;
-  return visible.map(toScheduleInstance);
-}
-
-/** 内存计算某条规则某一天的班次（不写库）。 */
-function computeRuleInstanceForDate(
-  rule: any,
-  templateById: Map<string, any>,
-  date: string,
-): any | null {
-  const offset = diffDays(rule.startDate, date);
-  if (offset < 0) return null;
-  if (rule.endDate && date > rule.endDate) return null;
-  const sequence = rule.sequence ?? [];
-  if (sequence.length === 0) return null;
-  const item = sequence[offset % sequence.length];
-  const tpl = item ? templateById.get(item.shiftTemplateId) : undefined;
-  if (!tpl) return null;
-  const snap = snapshotFromTemplate(tpl);
-  const times = instanceTimes(date, snap, rule.timezone ?? "Asia/Shanghai");
-  return {
-    _id: `rule:${rule._id}:${date}`,
-    workspaceId: rule.workspaceId,
-    ownerOpenid: rule.ownerOpenid,
-    businessDate: date,
-    timezone: rule.timezone ?? "Asia/Shanghai",
-    startsAt: times.startsAt,
-    endsAt: times.endsAt,
-    kind: snap.kind,
-    shiftSnapshot: snap,
-    locationSnapshot: null,
-    note: null,
-    status: "scheduled",
-    source: "rule",
-    sourceRuleId: rule._id,
-    version: 1,
-    history: [],
-  };
-}
-
-/** 已存在实例 + 当前排班表内存计算补全（分享海报等服务端读取用，不写库）。 */
-export async function mergedRuleInstances(
-  openid: string,
-  workspaceId: string,
-  from: string,
-  to: string,
-): Promise<any[]> {
-  const existingRes = await db
-    .collection("scheduleInstances")
-    .where({ workspaceId, ownerOpenid: openid, businessDate: _.gte(from).and(_.lte(to)) })
-    .limit(1000)
-    .get();
-  const existing = existingRes.data;
-  const userRes = await db.collection("users").doc(openid).get();
-  const activeRuleId = userRes.data?.activeRuleId;
-  if (!activeRuleId) return existing;
-  const ruleRes = await db.collection("scheduleRules").doc(activeRuleId).get();
-  const rule = ruleRes.data;
-  if (!rule || rule.isActive === false) return existing;
-  const ids = rule.sequence.map((s: any) => s.shiftTemplateId);
-  const tplRes = await db
-    .collection("shiftTemplates")
-    .where({ workspaceId, _id: _.in(ids) })
-    .limit(100)
-    .get();
-  const tplMap: Map<string, any> = new Map(tplRes.data.map((t: any) => [t._id, t]));
-  const byDate = new Map(existing.map((r: any) => [r.businessDate, r]));
-  const out = [...existing];
-  let cursor = from;
-  while (cursor <= to) {
-    if (!byDate.has(cursor)) {
-      const virtual = computeRuleInstanceForDate(rule, tplMap, cursor);
-      if (virtual) out.push(virtual);
-    }
-    cursor = addDays(cursor, 1);
-  }
-  return out.sort((a: any, b: any) => (a.businessDate < b.businessDate ? -1 : 1));
-}
-
-function diffDays(from: string, to: string): number {
-  const [fy, fm, fd] = from.split("-").map(Number);
-  const [ty, tm, td] = to.split("-").map(Number);
-  return Math.round(
-    (Date.UTC(ty ?? 0, (tm ?? 1) - 1, td ?? 1) - Date.UTC(fy ?? 0, (fm ?? 1) - 1, fd ?? 1)) /
-      86_400_000,
-  );
-}
-
-/** 把活跃循环规则补齐到 upToDate（不超过今天 + 400 天，避免单次调用过大）。 */
-export async function extendRules(
-  openid: string,
-  workspaceId: string,
-  upToDate: string,
-): Promise<void> {
-  const today = todayInTimezone("Asia/Shanghai");
-  const cap = addDays(today, 400);
-  const target = upToDate > cap ? cap : upToDate;
-  const rulesRes = await db
-    .collection("scheduleRules")
-    .where({ workspaceId, ownerOpenid: openid, isActive: true })
-    .limit(100)
-    .get();
-  for (const rule of rulesRes.data) {
-    if (rule.endDate && rule.endDate < rule.startDate) continue;
-    const end = rule.endDate && rule.endDate < target ? rule.endDate : target;
-    const days = diffDays(rule.startDate, end) + 1;
-    if (days <= 0) continue;
-    const slots = generateCycleSlots({
-      startDate: rule.startDate,
-      endDate: end,
-      sequence: rule.sequence.map((s: any) => s.shiftTemplateId),
-      generationHorizonDays: Math.min(days, 400),
-    });
-    const ids = Array.from(new Set(slots.map((s) => s.shiftTemplateId)));
-    const tplRes = await db
-      .collection("shiftTemplates")
-      .where({ workspaceId, _id: _.in(ids) })
-      .limit(100)
-      .get();
-    const tplMap: Map<string, any> = new Map(tplRes.data.map((t: any) => [t._id, t]));
-    const existingRes = await db
-      .collection("scheduleInstances")
-      .where(
-        _.and([
-          {
-            workspaceId,
-            ownerOpenid: openid,
-            businessDate: _.gte(rule.startDate).and(_.lte(end)),
-          },
-          _.or([{ sourceRuleId: rule._id }, { source: "manual" }]),
-        ]),
-      )
-      .limit(1000)
-      .get();
-    const occupied = new Set(existingRes.data.map((r: any) => r.businessDate));
-    const now = nowIso();
-    const inserts: Promise<unknown>[] = [];
-    for (const slot of slots) {
-      if (occupied.has(slot.date)) continue;
-      const tpl = tplMap.get(slot.shiftTemplateId);
-      if (!tpl) continue;
-      const snap = snapshotFromTemplate(tpl);
-      const times = instanceTimes(slot.date, snap, rule.timezone ?? "Asia/Shanghai");
-      inserts.push(
-        db.collection("scheduleInstances").add({
-          data: {
-            workspaceId,
-            ownerOpenid: openid,
-            businessDate: slot.date,
-            timezone: rule.timezone ?? "Asia/Shanghai",
-            startsAt: times.startsAt,
-            endsAt: times.endsAt,
-            kind: snap.kind,
-            shiftSnapshot: snap,
-            locationSnapshot: null,
-            note: null,
-            status: "scheduled",
-            source: "rule",
-            sourceRuleId: rule._id,
-            version: 1,
-            history: [],
-            createdAt: now,
-            updatedAt: now,
-          },
-        }),
-      );
-    }
-    await chunkAll(inserts, 20);
-  }
+  return res.data.map(toScheduleInstance);
 }
 
 export async function create(openid: string, payload: any) {
@@ -441,6 +260,7 @@ export async function update(openid: string, payload: any) {
   return toScheduleInstance(updated);
 }
 
+/** 只保存循环规则，不生成任何排班实例；未来排班由小程序端本地计算。 */
 export async function createRule(openid: string, payload: any) {
   await requireWorkspace(openid, payload.workspaceId);
   assert(
@@ -463,12 +283,6 @@ export async function createRule(openid: string, payload: any) {
   }
 
   const horizon = Math.min(366, Math.max(7, payload.generationHorizonDays ?? 90));
-  const slots = generateCycleSlots({
-    startDate: payload.startDate,
-    endDate: payload.endDate ?? null,
-    sequence: ids,
-    generationHorizonDays: horizon,
-  });
   const workspace = await getWorkspace(payload.workspaceId);
   const timezone = payload.timezone ?? workspace.timezone;
   const now = nowIso();
@@ -493,92 +307,9 @@ export async function createRule(openid: string, payload: any) {
   await db.collection("users").doc(openid).update({
     data: { activeRuleId: ruleId, updatedAt: now },
   });
-  const from = slots[0]?.date ?? payload.startDate;
-  const to = slots[slots.length - 1]?.date ?? payload.startDate;
-  const existingRes = await db
-    .collection("scheduleInstances")
-    .where({
-      workspaceId: payload.workspaceId,
-      ownerOpenid: openid,
-      businessDate: _.gte(from).and(_.lte(to)),
-      source: "manual",
-    })
-    .limit(1000)
-    .get();
-  const occupied = new Set(existingRes.data.map((r: any) => r.businessDate));
-  let generatedCount = 0;
-  const inserts: Promise<unknown>[] = [];
-  for (const slot of slots) {
-    if (occupied.has(slot.date)) continue;
-    const tpl = tplMap.get(slot.shiftTemplateId);
-    if (!tpl) continue;
-    const snap = snapshotFromTemplate(tpl);
-    const times = instanceTimes(slot.date, snap, timezone);
-    inserts.push(
-      db
-        .collection("scheduleInstances")
-        .add({
-          data: {
-            workspaceId: payload.workspaceId,
-            ownerOpenid: openid,
-            businessDate: slot.date,
-            timezone,
-            startsAt: times.startsAt,
-            endsAt: times.endsAt,
-            kind: snap.kind,
-            shiftSnapshot: snap,
-            locationSnapshot: null,
-            note: null,
-            status: "scheduled",
-            source: "rule",
-            sourceRuleId: ruleId,
-            version: 1,
-            history: [],
-            createdAt: now,
-            updatedAt: now,
-          },
-        })
-        .then(() => {
-          generatedCount += 1;
-        }),
-    );
-  }
-  await chunkAll(inserts, 10);
-
-  const allRes = await db
-    .collection("scheduleInstances")
-    .where({
-      workspaceId: payload.workspaceId,
-      ownerOpenid: openid,
-      businessDate: _.gte(from).and(_.lte(to)),
-    })
-    .limit(1000)
-    .get();
-  const relevant = allRes.data.filter(
-    (r: any) => r.source !== "rule" || r.sourceRuleId === ruleId,
-  );
-  const conflicts: any[] = [];
-  for (const a of relevant) {
-    for (const b of relevant) {
-      if (a._id === b._id) continue;
-      if (
-        intervalsOverlap(
-          { id: a._id, startsAt: a.startsAt ?? null, endsAt: a.endsAt ?? null, kind: a.kind },
-          { id: b._id, startsAt: b.startsAt ?? null, endsAt: b.endsAt ?? null, kind: b.kind },
-        )
-      ) {
-        conflicts.push({
-          type: "overlap",
-          severity: "error",
-          message: `${a.businessDate} 与 ${b.businessDate} 排班时间重叠`,
-          existingScheduleId: b._id,
-        });
-      }
-    }
-  }
   await writeAudit(openid, payload.workspaceId, "schedule_rule.create", "scheduleRule", ruleId, {
     startDate: payload.startDate,
-    generatedCount,
+    generatedCount: 0,
   });
   return {
     rule: {
@@ -593,8 +324,8 @@ export async function createRule(openid: string, payload: any) {
       version: 1,
       isActive: true,
     },
-    generatedCount,
-    conflicts,
+    generatedCount: 0,
+    conflicts: [],
   };
 }
 
@@ -643,6 +374,7 @@ export async function removeRule(openid: string, workspaceId: string, ruleId: st
   await db.collection("scheduleRules").doc(ruleId).update({
     data: { isActive: false, updatedAt: nowIso() },
   });
+  // 规则不再生成实例；历史遗留的规则实例一并移除
   await db.collection("scheduleInstances").where({ sourceRuleId: ruleId }).remove();
   const userRes = await db.collection("users").doc(openid).get();
   if (userRes.data?.activeRuleId === ruleId) {

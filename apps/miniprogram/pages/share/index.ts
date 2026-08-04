@@ -217,11 +217,24 @@ Page({
     if (this.data.generating) return;
     this.setData({ generating: true, canvasVisible: true });
     try {
+      const entries = this.data.previewEntries.map((entry) => ({
+        date: entry.date,
+        shiftName: entry.shiftName,
+        shortName: entry.shortName,
+        kind: entry.kind,
+        color: entry.color,
+        timeText: entry.timeText,
+        location: entry.location,
+        note: entry.note,
+        weather: entry.weather,
+        overtime: entry.overtime,
+      }));
       const snapshot = await api.createShareSnapshot({
         rangeStart: this.data.rangeStart,
         rangeEnd: this.data.rangeEnd,
         templateCode: "default",
         privacyOptions: this.data.privacy,
+        entries,
       });
       const multi = isMultiDay(this.data.rangeStart, this.data.rangeEnd);
       const height = multi

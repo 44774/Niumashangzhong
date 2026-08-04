@@ -48,4 +48,24 @@ Page({
       });
     }
   },
+
+  removeRecord(event: WechatMiniprogram.TouchEvent) {
+    const id = event.currentTarget.dataset.id as string;
+    wx.showModal({
+      title: "删除改班记录",
+      content: "删除后该条临时改班记录将从记录列表中移除（排班本身不受影响）。确定删除吗？",
+      confirmText: "删除",
+      confirmColor: "#EF4444",
+      success: async (res) => {
+        if (!res.confirm) return;
+        try {
+          await api.removeChangeRequest(id);
+          wx.showToast({ title: "已删除", icon: "success" });
+          this.load();
+        } catch (err) {
+          wx.showToast({ title: (err as Error).message, icon: "none" });
+        }
+      },
+    });
+  },
 });

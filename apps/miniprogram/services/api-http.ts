@@ -92,6 +92,10 @@ export const api = {
     return request(`/change-requests${status ? `?status=${status}` : ""}`);
   },
 
+  removeChangeRequest(id: string): Promise<{ removed: string }> {
+    return request(`/change-requests/${id}`, { method: "DELETE" });
+  },
+
   weather(from: string, to: string, city?: string | WeatherLocation): Promise<WeatherForecast[]> {
     const cityName = typeof city === "string" ? city : city?.name;
     return request(`/weather?from=${from}&to=${to}${cityName ? `&city=${encodeURIComponent(cityName)}` : ""}`);

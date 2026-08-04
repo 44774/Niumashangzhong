@@ -12,7 +12,10 @@
     <view class="card record-card" wx:for="{{records}}" wx:key="id">
       <view class="row-between">
         <text class="record-status status-{{item.status}}">{{item.statusText}}</text>
-        <text class="record-time">{{item.createdAtText}}</text>
+        <view class="row">
+          <text class="record-time">{{item.createdAtText}}</text>
+          <text class="record-delete" data-id="{{item.id}}" bindtap="removeRecord">删除</text>
+        </view>
       </view>
       <view class="row record-change">
         <text class="record-old">{{item.originalSnapshot.name}}</text>

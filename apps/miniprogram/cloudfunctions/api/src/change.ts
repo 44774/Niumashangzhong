@@ -90,3 +90,22 @@ export async function list(openid: string, payload: { workspaceId: string; statu
     .get();
   return res.data.map(toChangeRequest);
 }
+
+export async function remove(
+  openid: string,
+  payload: { workspaceId: string; id: string },
+) {
+  await requireWorkspace(openid, payload.workspaceId);
+  const res = await db
+    .collection("changeRequests")
+    .where({
+      _id: payload.id,
+      workspaceId: payload.workspaceId,
+      requesterOpenid: openid,
+    })
+    .remove();
+  if ((res.stats?.removed ?? 0) === 0) {
+    throw new CloudError("NOT_FOUND", "改班记录不存在", 404);
+  }
+  return { removed: payload.id };
+}

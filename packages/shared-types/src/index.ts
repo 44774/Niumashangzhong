@@ -242,6 +242,7 @@ export interface ShareSnapshotInput {
   rangeEnd: string;
   templateCode: string;
   privacyOptions: SharePrivacyOptions;
+  entries?: ShareSnapshotEntry[];
 }
 
 export interface ShareSnapshotEntry {

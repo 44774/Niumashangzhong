@@ -90,7 +90,16 @@ await miniProgram.evaluate(
           shiftTemplateId: tpl.id,
         });
         if (created && created.ok === false && created.error?.code === "SCHEDULE_CONFLICT") {
-          created = { ok: true, existed: true };
+          const found = await call("schedule.list", {
+            workspaceId,
+            from: "2026-10-01",
+            to: "2026-10-01",
+          });
+          created = {
+            ok: true,
+            existed: true,
+            data: found && found.ok && found.data && found.data[0] ? found.data[0] : null,
+          };
         }
       }
       const share =
@@ -107,6 +116,43 @@ await miniProgram.evaluate(
                 showLocation: false,
                 showNote: false,
               },
+              entries: [
+                {
+                  date: "2026-10-01",
+                  shiftName: "早班",
+                  shortName: "早班",
+                  kind: "work",
+                  color: "#10B981",
+                  timeText: "09:00–17:30",
+                  location: null,
+                  note: null,
+                  weather: null,
+                  overtime: true,
+                },
+              ],
+            })
+          : null;
+      const changeCreated =
+        created && created.ok && created.data && created.data.id
+          ? await call("change.create", {
+              workspaceId,
+              scheduleInstanceId: created.data.id,
+              requestedShift: {
+                name: "夜班",
+                kind: "work",
+                startTime: "21:00",
+                endTime: "07:00",
+                endsNextDay: true,
+                color: "#7C3AED",
+              },
+              reason: "功能验证",
+            })
+          : null;
+      const changeRemoved =
+        changeCreated && changeCreated.ok && changeCreated.data && changeCreated.data.id
+          ? await call("change.remove", {
+              workspaceId,
+              id: changeCreated.data.id,
             })
           : null;
       store({
@@ -121,6 +167,8 @@ await miniProgram.evaluate(
         ruleList,
         switched,
         removed,
+        changeCreated,
+        changeRemoved,
         workspaceId,
       });
     })();
@@ -148,6 +196,8 @@ const ruleManagement =
   result?.ruleList && result.ruleList.ok && result.ruleList.data.length > 0 &&
   result?.switched?.ok === true &&
   result?.removed?.ok === true;
+const changeDelete =
+  result?.changeCreated && result.changeCreated.ok && result?.changeRemoved?.ok === true;
 
 console.log("auth.me:", result?.auth?.ok === true ? "ok" : JSON.stringify(result?.auth));
 console.log("holiday.getRange 2026-09-30..10-08 条数:", holidayCount, "| 10-01:", oct1);
@@ -157,6 +207,9 @@ console.log("share.create 10-01 overtime:", shareOvertime ? "true" : JSON.string
 console.log("rule.create:", result?.rule?.ok === true ? "ok" : JSON.stringify(result?.rule));
 console.log("schedule.list 11-07..11-12 条数（应为0，由客户端本地计算）:", Array.isArray(result?.farList?.data) ? result.farList.data.length : 0);
 console.log("rule.list 条数:", result?.ruleList?.data?.length ?? 0, "| 切换:", result?.switched?.ok === true, "| 删除:", result?.removed?.ok === true);
+console.log("改班记录创建/删除:", result?.changeCreated?.ok === true, "/", result?.changeRemoved?.ok === true);
+console.log("change.create:", JSON.stringify(result?.changeCreated));
+console.log("change.remove:", JSON.stringify(result?.changeRemoved));
 
 const pass =
   holidayCount > 0 &&
@@ -165,7 +218,8 @@ const pass =
   result?.created?.ok === true &&
   shareOvertime &&
   rollingRule &&
-  ruleManagement;
+  ruleManagement &&
+  changeDelete;
 console.log(pass ? "\n云端功能验证通过" : "\n云端功能验证失败");
 await miniProgram.close();
 process.exit(pass ? 0 : 1);

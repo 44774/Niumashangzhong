@@ -36,6 +36,7 @@ export const api = {
   createChangeRequest: (input: Parameters<typeof cloudApi.createChangeRequest>[0]) =>
     current().createChangeRequest(input),
   changeRequests: (status?: string) => current().changeRequests(status),
+  removeChangeRequest: (id: string) => current().removeChangeRequest(id),
   weather: (
     from: string,
     to: string,

@@ -1,11 +1,11 @@
 import { db, requireWorkspace, writeAudit } from "./db";
 import { toShareSnapshot } from "./map";
 import { assert, assertDate, CloudError, nowIso } from "./util";
-import { forecastRange, resolveLocation } from "./weather";
-import { formatTimeRangeFromSnapshot } from "@workcal/schedule-engine";
-import { readHolidayRange } from "./holiday";
-import { mergedRuleInstances } from "./schedule";
 
+/**
+ * 分享快照由小程序端本地计算并提交（隐私过滤后的条目），
+ * 云端只做存储，不再计算排班或天气。
+ */
 export async function create(openid: string, payload: any) {
   await requireWorkspace(openid, payload.workspaceId);
   assert(payload.rangeStart && payload.rangeEnd, "VALIDATION_ERROR", "rangeStart 与 rangeEnd 为必填");
@@ -21,41 +21,15 @@ export async function create(openid: string, payload: any) {
     showLocation: Boolean(payload.privacyOptions?.showLocation),
     showNote: Boolean(payload.privacyOptions?.showNote),
   };
+  const entries = Array.isArray(payload.entries) ? payload.entries : [];
+  for (const entry of entries) {
+    assert(
+      entry && typeof entry.date === "string" && typeof entry.shiftName === "string",
+      "VALIDATION_ERROR",
+      "分享条目格式错误",
+    );
+  }
   const userRes = await db.collection("users").doc(openid).get();
-  const location = await resolveLocation(openid);
-  const weathers = await forecastRange(location, payload.rangeStart, payload.rangeEnd);
-  const weatherByDate = new Map(weathers.map((w) => [w.date, w]));
-  const instances = await mergedRuleInstances(
-    openid,
-    payload.workspaceId,
-    payload.rangeStart,
-    payload.rangeEnd,
-  );
-  const holidayMap = await readHolidayRange(payload.rangeStart, payload.rangeEnd);
-  const entries = instances.map((row: any) => {
-    const forecast = weatherByDate.get(row.businessDate);
-    return {
-      date: row.businessDate,
-      shiftName: row.shiftSnapshot?.name,
-      shortName: row.shiftSnapshot?.shortName,
-      kind: row.shiftSnapshot?.kind,
-      color: row.shiftSnapshot?.color,
-      timeText: privacy.showTime ? formatTimeRangeFromSnapshot(row.shiftSnapshot) : null,
-      location: privacy.showLocation ? (row.locationSnapshot?.name ?? null) : null,
-      note: privacy.showNote ? (row.note ?? null) : null,
-      weather:
-        privacy.showWeather && forecast
-          ? {
-              conditionText: forecast.conditionText,
-              conditionCode: forecast.conditionCode,
-              temperatureMin: forecast.temperatureMin,
-              temperatureMax: forecast.temperatureMax,
-            }
-          : null,
-      overtime:
-        row.kind !== "rest" && holidayMap[row.businessDate] === "holiday" ? true : undefined,
-    };
-  });
   const createdAt = nowIso();
   const added = await db.collection("shareSnapshots").add({
     data: {

@@ -65,6 +65,8 @@ exports.main = async (event: any) => {
         return ok(await change.create(openid, payload));
       case "change.list":
         return ok(await change.list(openid, payload));
+      case "change.remove":
+        return ok(await change.remove(openid, payload));
       case "weather.get":
         return ok(await weather.get(openid, payload));
       case "holiday.sync":

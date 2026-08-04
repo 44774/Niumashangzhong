@@ -124,4 +124,29 @@ export async function changeRoutes(app: FastifyInstance, opts: { db: Db }): Prom
       return rows.map(toChangeRequest);
     },
   );
+
+  app.delete<{ Params: { id: string } }>(
+    "/change-requests/:id",
+    { schema: { tags: ["Changes"] } },
+    async (req) => {
+      const userId = await requireAuth(req);
+      const ws = await requireWorkspace(req, db);
+      const rows = await db
+        .select()
+        .from(scheduleChangeRequests)
+        .where(
+          and(
+            eq(scheduleChangeRequests.id, req.params.id),
+            eq(scheduleChangeRequests.workspaceId, ws.workspaceId),
+            eq(scheduleChangeRequests.requesterUserId, userId),
+          ),
+        )
+        .limit(1);
+      if (rows.length === 0) throw notFound("改班记录不存在");
+      await db
+        .delete(scheduleChangeRequests)
+        .where(eq(scheduleChangeRequests.id, req.params.id));
+      return { removed: req.params.id };
+    },
+  );
 }

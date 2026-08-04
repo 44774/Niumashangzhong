@@ -111,6 +111,10 @@ export const api = {
     return ws<ChangeRequest[]>("change.list", status ? { status } : {});
   },
 
+  async removeChangeRequest(id: string): Promise<{ removed: string }> {
+    return ws<{ removed: string }>("change.remove", { id });
+  },
+
   async weather(
     from: string,
     to: string,

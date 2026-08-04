@@ -392,21 +392,6 @@ function toMinutes(time) {
   }
   return Number(match[1]) * 60 + Number(match[2]);
 }
-function formatTimeRange(input) {
-  if (!input.startTime || !input.endTime)
-    return null;
-  const endsNextDay = input.endsNextDay || toMinutes(input.endTime) <= toMinutes(input.startTime);
-  return endsNextDay ? `${input.startTime}\u2013\u6B21\u65E5${input.endTime}` : `${input.startTime}\u2013${input.endTime}`;
-}
-function formatTimeRangeFromSnapshot(snapshot) {
-  if (snapshot.kind === "rest")
-    return null;
-  return formatTimeRange({
-    startTime: snapshot.startTime,
-    endTime: snapshot.endTime,
-    endsNextDay: snapshot.endsNextDay
-  });
-}
 function addDays(date, days) {
   const d = parseDate(date);
   d.setUTCDate(d.getUTCDate() + days);
@@ -465,33 +450,6 @@ function timezoneOffsetMinutes(date, timezone) {
   } catch {
     return 480;
   }
-}
-
-// packages/schedule-engine/dist/cycle.js
-function generateCycleSlots(rule) {
-  if (rule.sequence.length === 0) {
-    throw new Error("\u73ED\u6B21\u5E8F\u5217\u4E0D\u80FD\u4E3A\u7A7A");
-  }
-  const horizon = Math.max(1, rule.generationHorizonDays);
-  const lastDate = rule.endDate ? minDate(rule.endDate, addDays(rule.startDate, horizon - 1)) : addDays(rule.startDate, horizon - 1);
-  if (lastDate < rule.startDate)
-    return [];
-  const slots = [];
-  let cursor = rule.startDate;
-  let index = 0;
-  while (cursor <= lastDate) {
-    const shiftTemplateId = rule.sequence[index % rule.sequence.length];
-    if (!shiftTemplateId) {
-      throw new Error("\u73ED\u6B21\u5E8F\u5217\u5305\u542B\u7A7A\u9879");
-    }
-    slots.push({ date: cursor, sequenceIndex: index, shiftTemplateId });
-    index += 1;
-    cursor = addDays(cursor, 1);
-  }
-  return slots;
-}
-function minDate(a, b) {
-  return a <= b ? a : b;
 }
 
 // packages/schedule-engine/dist/conflict.js
@@ -587,7 +545,7 @@ function toForecast(location, date, daily, index) {
     updatedAt: (/* @__PURE__ */ new Date()).toISOString()
   };
 }
-function minDate2(a, b) {
+function minDate(a, b) {
   return a <= b ? a : b;
 }
 function maxDate(a, b) {
@@ -598,9 +556,9 @@ async function forecastRange(location, from, to) {
   const pastLimit = addDays(today, -92);
   const futureLimit = addDays(today, 16);
   const archiveStart = from < pastLimit ? from : null;
-  const archiveEnd = archiveStart ? minDate2(to, addDays(pastLimit, -1)) : null;
+  const archiveEnd = archiveStart ? minDate(to, addDays(pastLimit, -1)) : null;
   const forecastStart = maxDate(from, pastLimit);
-  const forecastEnd = minDate2(to, futureLimit);
+  const forecastEnd = minDate(to, futureLimit);
   const baseParams = "daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,wind_speed_10m_max&timezone=Asia%2FShanghai";
   const jobs = [];
   if (archiveStart && archiveEnd && archiveStart <= archiveEnd) {
@@ -944,10 +902,7 @@ function instanceTimes(date, snap, timezone) {
 async function resolveSnapshot(workspaceId, shiftTemplateId, customShift) {
   if (shiftTemplateId) {
     const res = await db.collection("shiftTemplates").doc(shiftTemplateId).get();
-    if (!res.data) {
-      throw new CloudError("NOT_FOUND", "\u73ED\u6B21\u6A21\u677F\u4E0D\u5B58\u5728", 404);
-    }
-    if (res.data.workspaceId !== workspaceId) {
+    if (!res.data || res.data.workspaceId !== workspaceId) {
       throw new CloudError("NOT_FOUND", "\u73ED\u6B21\u6A21\u677F\u4E0D\u5B58\u5728", 404);
     }
     return snapshotFromTemplate(res.data);
@@ -979,13 +934,7 @@ async function assertNoOverlap(workspaceId, ownerOpenid, businessDate, times, ex
     throw new CloudError("SCHEDULE_CONFLICT", "\u8BE5\u65F6\u6BB5\u4E0E\u73B0\u6709\u73ED\u6B21\u51B2\u7A81", 409);
   }
 }
-async function chunkAll(tasks, size) {
-  for (let i = 0; i < tasks.length; i += size) {
-    await Promise.all(tasks.slice(i, i + size));
-  }
-}
 async function list2(openid, payload) {
-  var _a;
   await requireWorkspace(openid, payload.workspaceId);
   assertDate(payload.from);
   assertDate(payload.to);
@@ -995,76 +944,10 @@ async function list2(openid, payload) {
   const res = await db.collection("scheduleInstances").where({
     workspaceId: payload.workspaceId,
     ownerOpenid: openid,
-    businessDate: _.gte(payload.from).and(_.lte(payload.to))
+    businessDate: _.gte(payload.from).and(_.lte(payload.to)),
+    source: _.neq("rule")
   }).orderBy("businessDate", "asc").limit(1e3).get();
-  const userRes = await db.collection("users").doc(openid).get();
-  const activeRuleId = (_a = userRes.data) == null ? void 0 : _a.activeRuleId;
-  const visible = activeRuleId ? res.data.filter(
-    (r) => r.sourceRuleId === activeRuleId || r.source !== "rule"
-  ) : res.data;
-  return visible.map(toScheduleInstance);
-}
-function computeRuleInstanceForDate(rule, templateById, date) {
-  const offset = diffDays(rule.startDate, date);
-  if (offset < 0) return null;
-  if (rule.endDate && date > rule.endDate) return null;
-  const sequence = rule.sequence ?? [];
-  if (sequence.length === 0) return null;
-  const item = sequence[offset % sequence.length];
-  const tpl = item ? templateById.get(item.shiftTemplateId) : void 0;
-  if (!tpl) return null;
-  const snap = snapshotFromTemplate(tpl);
-  const times = instanceTimes(date, snap, rule.timezone ?? "Asia/Shanghai");
-  return {
-    _id: `rule:${rule._id}:${date}`,
-    workspaceId: rule.workspaceId,
-    ownerOpenid: rule.ownerOpenid,
-    businessDate: date,
-    timezone: rule.timezone ?? "Asia/Shanghai",
-    startsAt: times.startsAt,
-    endsAt: times.endsAt,
-    kind: snap.kind,
-    shiftSnapshot: snap,
-    locationSnapshot: null,
-    note: null,
-    status: "scheduled",
-    source: "rule",
-    sourceRuleId: rule._id,
-    version: 1,
-    history: []
-  };
-}
-async function mergedRuleInstances(openid, workspaceId, from, to) {
-  var _a;
-  const existingRes = await db.collection("scheduleInstances").where({ workspaceId, ownerOpenid: openid, businessDate: _.gte(from).and(_.lte(to)) }).limit(1e3).get();
-  const existing = existingRes.data;
-  const userRes = await db.collection("users").doc(openid).get();
-  const activeRuleId = (_a = userRes.data) == null ? void 0 : _a.activeRuleId;
-  if (!activeRuleId) return existing;
-  const ruleRes = await db.collection("scheduleRules").doc(activeRuleId).get();
-  const rule = ruleRes.data;
-  if (!rule || rule.isActive === false) return existing;
-  const ids = rule.sequence.map((s) => s.shiftTemplateId);
-  const tplRes = await db.collection("shiftTemplates").where({ workspaceId, _id: _.in(ids) }).limit(100).get();
-  const tplMap = new Map(tplRes.data.map((t) => [t._id, t]));
-  const byDate = new Map(existing.map((r) => [r.businessDate, r]));
-  const out = [...existing];
-  let cursor = from;
-  while (cursor <= to) {
-    if (!byDate.has(cursor)) {
-      const virtual = computeRuleInstanceForDate(rule, tplMap, cursor);
-      if (virtual) out.push(virtual);
-    }
-    cursor = addDays(cursor, 1);
-  }
-  return out.sort((a, b) => a.businessDate < b.businessDate ? -1 : 1);
-}
-function diffDays(from, to) {
-  const [fy, fm, fd] = from.split("-").map(Number);
-  const [ty, tm, td] = to.split("-").map(Number);
-  return Math.round(
-    (Date.UTC(ty ?? 0, (tm ?? 1) - 1, td ?? 1) - Date.UTC(fy ?? 0, (fm ?? 1) - 1, fd ?? 1)) / 864e5
-  );
+  return res.data.map(toScheduleInstance);
 }
 async function create2(openid, payload) {
   await requireWorkspace(openid, payload.workspaceId);
@@ -1184,7 +1067,7 @@ async function update2(openid, payload) {
   return toScheduleInstance(updated);
 }
 async function createRule(openid, payload) {
-  var _a, _b, _c;
+  var _a;
   await requireWorkspace(openid, payload.workspaceId);
   assert(
     payload.startDate && Array.isArray(payload.sequence) && payload.sequence.length > 0,
@@ -1200,12 +1083,6 @@ async function createRule(openid, payload) {
     assert(tplMap.has(id), "NOT_FOUND", `\u73ED\u6B21\u6A21\u677F ${id} \u4E0D\u5B58\u5728`, 404);
   }
   const horizon = Math.min(366, Math.max(7, payload.generationHorizonDays ?? 90));
-  const slots = generateCycleSlots({
-    startDate: payload.startDate,
-    endDate: payload.endDate ?? null,
-    sequence: ids,
-    generationHorizonDays: horizon
-  });
   const workspace = await getWorkspace(payload.workspaceId);
   const timezone = payload.timezone ?? workspace.timezone;
   const now = nowIso();
@@ -1230,78 +1107,9 @@ async function createRule(openid, payload) {
   await db.collection("users").doc(openid).update({
     data: { activeRuleId: ruleId, updatedAt: now }
   });
-  const from = ((_b = slots[0]) == null ? void 0 : _b.date) ?? payload.startDate;
-  const to = ((_c = slots[slots.length - 1]) == null ? void 0 : _c.date) ?? payload.startDate;
-  const existingRes = await db.collection("scheduleInstances").where({
-    workspaceId: payload.workspaceId,
-    ownerOpenid: openid,
-    businessDate: _.gte(from).and(_.lte(to)),
-    source: "manual"
-  }).limit(1e3).get();
-  const occupied = new Set(existingRes.data.map((r) => r.businessDate));
-  let generatedCount = 0;
-  const inserts = [];
-  for (const slot of slots) {
-    if (occupied.has(slot.date)) continue;
-    const tpl = tplMap.get(slot.shiftTemplateId);
-    if (!tpl) continue;
-    const snap = snapshotFromTemplate(tpl);
-    const times = instanceTimes(slot.date, snap, timezone);
-    inserts.push(
-      db.collection("scheduleInstances").add({
-        data: {
-          workspaceId: payload.workspaceId,
-          ownerOpenid: openid,
-          businessDate: slot.date,
-          timezone,
-          startsAt: times.startsAt,
-          endsAt: times.endsAt,
-          kind: snap.kind,
-          shiftSnapshot: snap,
-          locationSnapshot: null,
-          note: null,
-          status: "scheduled",
-          source: "rule",
-          sourceRuleId: ruleId,
-          version: 1,
-          history: [],
-          createdAt: now,
-          updatedAt: now
-        }
-      }).then(() => {
-        generatedCount += 1;
-      })
-    );
-  }
-  await chunkAll(inserts, 10);
-  const allRes = await db.collection("scheduleInstances").where({
-    workspaceId: payload.workspaceId,
-    ownerOpenid: openid,
-    businessDate: _.gte(from).and(_.lte(to))
-  }).limit(1e3).get();
-  const relevant = allRes.data.filter(
-    (r) => r.source !== "rule" || r.sourceRuleId === ruleId
-  );
-  const conflicts = [];
-  for (const a of relevant) {
-    for (const b of relevant) {
-      if (a._id === b._id) continue;
-      if (intervalsOverlap(
-        { id: a._id, startsAt: a.startsAt ?? null, endsAt: a.endsAt ?? null, kind: a.kind },
-        { id: b._id, startsAt: b.startsAt ?? null, endsAt: b.endsAt ?? null, kind: b.kind }
-      )) {
-        conflicts.push({
-          type: "overlap",
-          severity: "error",
-          message: `${a.businessDate} \u4E0E ${b.businessDate} \u6392\u73ED\u65F6\u95F4\u91CD\u53E0`,
-          existingScheduleId: b._id
-        });
-      }
-    }
-  }
   await writeAudit(openid, payload.workspaceId, "schedule_rule.create", "scheduleRule", ruleId, {
     startDate: payload.startDate,
-    generatedCount
+    generatedCount: 0
   });
   return {
     rule: {
@@ -1316,8 +1124,8 @@ async function createRule(openid, payload) {
       version: 1,
       isActive: true
     },
-    generatedCount,
-    conflicts
+    generatedCount: 0,
+    conflicts: []
   };
 }
 async function listRules(openid, workspaceId) {
@@ -1449,6 +1257,19 @@ async function list3(openid, payload) {
   const res = await db.collection("changeRequests").where(where).orderBy("createdAt", "desc").limit(100).get();
   return res.data.map(toChangeRequest);
 }
+async function remove(openid, payload) {
+  var _a;
+  await requireWorkspace(openid, payload.workspaceId);
+  const res = await db.collection("changeRequests").where({
+    _id: payload.id,
+    workspaceId: payload.workspaceId,
+    requesterOpenid: openid
+  }).remove();
+  if ((((_a = res.stats) == null ? void 0 : _a.removed) ?? 0) === 0) {
+    throw new CloudError("NOT_FOUND", "\u6539\u73ED\u8BB0\u5F55\u4E0D\u5B58\u5728", 404);
+  }
+  return { removed: payload.id };
+}
 
 // apps/miniprogram/cloudfunctions/api/src/share.ts
 async function create4(openid, payload) {
@@ -1467,38 +1288,15 @@ async function create4(openid, payload) {
     showLocation: Boolean((_d = payload.privacyOptions) == null ? void 0 : _d.showLocation),
     showNote: Boolean((_e = payload.privacyOptions) == null ? void 0 : _e.showNote)
   };
+  const entries = Array.isArray(payload.entries) ? payload.entries : [];
+  for (const entry of entries) {
+    assert(
+      entry && typeof entry.date === "string" && typeof entry.shiftName === "string",
+      "VALIDATION_ERROR",
+      "\u5206\u4EAB\u6761\u76EE\u683C\u5F0F\u9519\u8BEF"
+    );
+  }
   const userRes = await db.collection("users").doc(openid).get();
-  const location = await resolveLocation(openid);
-  const weathers = await forecastRange(location, payload.rangeStart, payload.rangeEnd);
-  const weatherByDate = new Map(weathers.map((w) => [w.date, w]));
-  const instances = await mergedRuleInstances(
-    openid,
-    payload.workspaceId,
-    payload.rangeStart,
-    payload.rangeEnd
-  );
-  const holidayMap = await readHolidayRange(payload.rangeStart, payload.rangeEnd);
-  const entries = instances.map((row) => {
-    var _a2, _b2, _c2, _d2, _e2;
-    const forecast = weatherByDate.get(row.businessDate);
-    return {
-      date: row.businessDate,
-      shiftName: (_a2 = row.shiftSnapshot) == null ? void 0 : _a2.name,
-      shortName: (_b2 = row.shiftSnapshot) == null ? void 0 : _b2.shortName,
-      kind: (_c2 = row.shiftSnapshot) == null ? void 0 : _c2.kind,
-      color: (_d2 = row.shiftSnapshot) == null ? void 0 : _d2.color,
-      timeText: privacy.showTime ? formatTimeRangeFromSnapshot(row.shiftSnapshot) : null,
-      location: privacy.showLocation ? ((_e2 = row.locationSnapshot) == null ? void 0 : _e2.name) ?? null : null,
-      note: privacy.showNote ? row.note ?? null : null,
-      weather: privacy.showWeather && forecast ? {
-        conditionText: forecast.conditionText,
-        conditionCode: forecast.conditionCode,
-        temperatureMin: forecast.temperatureMin,
-        temperatureMax: forecast.temperatureMax
-      } : null,
-      overtime: row.kind !== "rest" && holidayMap[row.businessDate] === "holiday" ? true : void 0
-    };
-  });
   const createdAt = nowIso();
   const added = await db.collection("shareSnapshots").add({
     data: {
@@ -1640,6 +1438,8 @@ exports.main = async (event) => {
         return ok(await create3(openid, payload));
       case "change.list":
         return ok(await list3(openid, payload));
+      case "change.remove":
+        return ok(await remove(openid, payload));
       case "weather.get":
         return ok(await get(openid, payload));
       case "holiday.sync":
