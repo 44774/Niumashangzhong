@@ -61,6 +61,7 @@
         <text class="history-version">改</text>
         <text class="history-text">{{item.originalSnapshot.name}} → {{item.requestedSnapshot.name}}</text>
         <text class="history-time">{{item.createdAtText}}</text>
+        <text class="record-delete" data-id="{{item.id}}" bindtap="removeChangeRecord">删除</text>
       </view>
     </view>
   </block>

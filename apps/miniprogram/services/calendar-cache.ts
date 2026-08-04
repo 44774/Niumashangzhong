@@ -9,6 +9,7 @@ export interface CalendarWindowData {
   todayLocation: string;
   todayDuration: string;
   changeDates: string[];
+  scheduleList: ScheduleInstance[];
 }
 
 const memory = new Map<string, { data: CalendarWindowData; expiresAt: number }>();

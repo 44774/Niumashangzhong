@@ -25,7 +25,7 @@
     </view>
   </view>
   <view class="legend">
-    <text wx:for="{{legend}}" wx:key="name" class="legend-item">
+    <text wx:for="{{legend}}" wx:key="name" class="legend-item" style="color: {{item.color}};">
       <text class="legend-dot" style="background: {{item.color}}"></text>{{item.shortName}}
     </text>
   </view>

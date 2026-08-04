@@ -47,6 +47,8 @@ console.log(
     monthLabel: await p.data("monthLabel"),
     cells: (await p.data("cells"))?.length,
     legend: (await p.data("legend"))?.length,
+    legendColor: (await p.data("legend"))?.[0]?.color,
+    shiftColor: Object.values(await p.data("shiftMap"))?.[0]?.[0]?.color,
     todaySummary: (await p.data("todaySummary"))?.shiftSnapshot?.name ?? null,
     changeDates: await p.data("changeDates"),
     todayWeather: (await p.data("todayWeather"))?.conditionText ?? null,
@@ -71,6 +73,9 @@ console.log(
   JSON.stringify({
     monthLabel: await p.data("monthLabel"),
     selectedDate: await p.data("selectedDate"),
+    selectedSummary: (await p.data("selectedSummary"))?.shiftSnapshot?.name ?? null,
+    selectedTitle: await p.data("selectedTitle"),
+    scheduleList: (await p.data("scheduleList"))?.length,
     todayWeather: (await p.data("todayWeather"))?.conditionText ?? null,
   }),
 );

@@ -35,10 +35,13 @@ Page({
     shiftMap: {} as Record<string, CalendarDayShift[]>,
     legend: [] as ShiftTemplate[],
     todaySummary: null as ScheduleInstance | null,
-    todayLabel: "",
-    todayTimeText: "",
-    todayLocation: "",
-    todayDuration: "",
+    selectedSummary: null as ScheduleInstance | null,
+    selectedLabel: "",
+    selectedTitle: "",
+    selectedTimeText: "",
+    selectedLocation: "",
+    selectedDuration: "",
+    scheduleList: [] as ScheduleInstance[],
     changeDates: [] as string[],
     todayWeather: null as WeatherForecast | null,
     weatherLoading: true,
@@ -89,7 +92,7 @@ Page({
         loadRange(from, to),
         ensureHolidayRange(from, to),
         api.changeRequestsInRange(from, to).catch(() => []),
-        getWeatherCached(today, today).catch(() => []),
+        getWeatherCached(this.data.selectedDate, this.data.selectedDate).catch(() => []),
       ]);
       const shiftMap: Record<string, CalendarDayShift[]> = {};
       for (const item of schedules) {
@@ -102,27 +105,35 @@ Page({
         });
         shiftMap[item.businessDate] = list;
       }
-      const todaySummary = schedules.find((s) => s.businessDate === today) ?? null;
+      const selectedSummary = schedules.find((s) => s.businessDate === this.data.selectedDate) ?? null;
       const changeDates = Array.from(
         new Set(changes.map((c) => c.businessDate).filter((d): d is string => Boolean(d))),
       );
       const windowData: CalendarWindowData = {
         shiftMap,
         legend: templates,
-        todaySummary,
-        todayLabel: `${today} ${weekdayCN(today)}`,
-        todayTimeText: todaySummary
-          ? formatTimeRange(todaySummary.shiftSnapshot) ?? "休息"
+        todaySummary: selectedSummary,
+        todayLabel: `${this.data.selectedDate} ${weekdayCN(this.data.selectedDate)}`,
+        todayTimeText: selectedSummary
+          ? formatTimeRange(selectedSummary.shiftSnapshot) ?? "休息"
           : "",
-        todayLocation: todaySummary?.locationSnapshot?.name ?? "",
-        todayDuration: todaySummary
-          ? durationLabel(todaySummary.shiftSnapshot)
-          : "",
+        todayLocation: selectedSummary?.locationSnapshot?.name ?? "",
+        todayDuration: selectedSummary ? durationLabel(selectedSummary.shiftSnapshot) : "",
         changeDates,
+        scheduleList: schedules,
       };
       setCalendarWindow(this.data.year, this.data.month, windowData);
       this.applyWindow(windowData);
       this.setData({
+        scheduleList: schedules,
+        selectedSummary,
+        selectedLabel: `${this.data.selectedDate} ${weekdayCN(this.data.selectedDate)}`,
+        selectedTitle: this.data.selectedDate === today ? "今日排班" : "所选日期排班",
+        selectedTimeText: selectedSummary
+          ? formatTimeRange(selectedSummary.shiftSnapshot) ?? "休息"
+          : "",
+        selectedLocation: selectedSummary?.locationSnapshot?.name ?? "",
+        selectedDuration: selectedSummary ? durationLabel(selectedSummary.shiftSnapshot) : "",
         todayWeather: todayWeatherList[0] ?? null,
         weatherLoading: false,
         weatherError: false,
@@ -157,6 +168,21 @@ Page({
       todayDuration: data.todayDuration,
       changeDates: data.changeDates,
       cells,
+      scheduleList: data.scheduleList,
+    });
+    this.updateSelectedSummary();
+  },
+
+  updateSelectedSummary() {
+    const date = this.data.selectedDate;
+    const summary = this.data.scheduleList.find((s) => s.businessDate === date) ?? null;
+    this.setData({
+      selectedSummary: summary,
+      selectedLabel: `${date} ${weekdayCN(date)}`,
+      selectedTitle: date === todayString() ? "今日排班" : "所选日期排班",
+      selectedTimeText: summary ? formatTimeRange(summary.shiftSnapshot) ?? "休息" : "",
+      selectedLocation: summary?.locationSnapshot?.name ?? "",
+      selectedDuration: summary ? durationLabel(summary.shiftSnapshot) : "",
     });
   },
 
@@ -211,6 +237,12 @@ Page({
   onDateTap(event: WechatMiniprogram.CustomEvent<{ date: string }>) {
     const date = event.detail.date;
     this.setData({ selectedDate: date });
+    this.updateSelectedSummary();
+    void getWeatherCached(date, date).then((list) => {
+      this.setData({ todayWeather: list[0] ?? null, weatherError: false });
+    }).catch(() => {
+      this.setData({ weatherError: true });
+    });
     wx.navigateTo({ url: `/pages/schedule-detail/index?date=${date}` });
   },
 
@@ -220,15 +252,15 @@ Page({
   },
 
   addTodaySchedule() {
-    wx.navigateTo({ url: `/pages/schedule-change/index?date=${todayString()}` });
+    wx.navigateTo({ url: `/pages/schedule-change/index?date=${this.data.selectedDate}` });
   },
 
   changeToday() {
-    if (!this.data.todaySummary) return;
-    wx.navigateTo({ url: `/pages/schedule-change/index?id=${this.data.todaySummary.id}` });
+    if (!this.data.selectedSummary) return;
+    wx.navigateTo({ url: `/pages/schedule-change/index?id=${this.data.selectedSummary.id}` });
   },
 
   shareToday() {
-    wx.navigateTo({ url: `/pages/share/index?date=${todayString()}` });
+    wx.navigateTo({ url: `/pages/share/index?date=${this.data.selectedDate}` });
   },
 });

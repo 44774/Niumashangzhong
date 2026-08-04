@@ -7,6 +7,7 @@ import { ensureHolidayRange } from "../../services/holiday-cache";
 import { isOvertime } from "../../utils/holiday";
 import { loadDateDetail } from "../../services/schedule-view";
 import type { ChangeRequest } from "../../typings/api";
+import { clearCalendarCache } from "../../services/calendar-cache";
 
 Page({
   data: {
@@ -127,5 +128,39 @@ Page({
 
   addSchedule() {
     wx.navigateTo({ url: `/pages/schedule-change/index?date=${this.extractDate()}` });
+  },
+
+  removeChangeRecord(event: WechatMiniprogram.TouchEvent) {
+    const id = event.currentTarget.dataset.id as string;
+    wx.showModal({
+      title: "删除改班记录",
+      content: "删除后该条临时改班记录将移除（排班本身不受影响）。确定删除吗？",
+      confirmText: "删除",
+      confirmColor: "#EF4444",
+      success: async (res) => {
+        if (!res.confirm) return;
+        try {
+          await api.removeChangeRequest(id);
+          clearCalendarCache();
+          const date = this.data.detail?.businessDate ?? this.data.date;
+          const changes = await api
+            .changeRequestsInRange(date, date)
+            .catch(() => []);
+          const changeRecords = changes.map((c) => {
+            const d = new Date(c.createdAt);
+            const pad = (n: number) => String(n).padStart(2, "0");
+            return {
+              ...c,
+              statusText: "已生效",
+              createdAtText: `${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`,
+            };
+          });
+          this.setData({ changeRecords });
+          wx.showToast({ title: "已删除", icon: "success" });
+        } catch (err) {
+          wx.showToast({ title: (err as Error).message, icon: "none" });
+        }
+      },
+    });
   },
 });

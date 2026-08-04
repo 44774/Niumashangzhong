@@ -23,16 +23,16 @@
   <view class="section-gap"></view>
   <view class="card today-card">
     <view class="row-between">
-      <text class="title-card">今日排班</text>
-      <text class="text-tertiary">{{todayLabel}}</text>
+      <text class="title-card">{{selectedTitle}}</text>
+      <text class="text-tertiary">{{selectedLabel}}</text>
     </view>
     <block wx:if="{{loading}}">
       <view class="loading-mask">加载中…</view>
     </block>
     <error-state wx:elif="{{error}}" message="{{errorMessage}}" bind:retry="load" />
     <empty-state
-      wx:elif="{{!todaySummary}}"
-      title="今天还没有排班"
+      wx:elif="{{!selectedSummary}}"
+      title="{{selectedLabel}} 还没有排班"
       desc="添加一个班次，让工作安排一目了然"
       action-text="添加排班"
       bind:action="addTodaySchedule"
@@ -40,16 +40,16 @@
     <block wx:else>
       <view class="row-between today-main">
         <shift-badge
-          name="{{todaySummary.shiftSnapshot.name}}"
-          short-name="{{todaySummary.shiftSnapshot.shortName}}"
-          color="{{todaySummary.shiftSnapshot.color}}"
+          name="{{selectedSummary.shiftSnapshot.name}}"
+          short-name="{{selectedSummary.shiftSnapshot.shortName}}"
+          color="{{selectedSummary.shiftSnapshot.color}}"
           size="lg"
         />
-        <text class="today-time">{{todayTimeText}}</text>
+        <text class="today-time">{{selectedTimeText}}</text>
       </view>
       <view class="today-meta">
-        <text wx:if="{{todayLocation}}">{{todayLocation}}</text>
-        <text wx:if="{{todayDuration}}">{{todayDuration}}</text>
+        <text wx:if="{{selectedLocation}}">{{selectedLocation}}</text>
+        <text wx:if="{{selectedDuration}}">{{selectedDuration}}</text>
       </view>
       <view class="weather-line" wx:if="{{todayWeather}}">
         <text class="weather-condition">{{todayWeather.conditionText}}</text>

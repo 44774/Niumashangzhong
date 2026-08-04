@@ -85,3 +85,9 @@
   color: var(--wc-color-text-tertiary);
   font-size: 22rpx;
 }
+
+.record-delete {
+  color: var(--wc-color-semantic-danger);
+  font-size: 24rpx;
+  padding: 8rpx 12rpx;
+}
