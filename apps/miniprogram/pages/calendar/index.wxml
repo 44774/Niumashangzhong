@@ -19,7 +19,7 @@
     bind:datelongpress="onDateLongPress"
   />
 
-  <view class="float-area">
+  <view class="float-area" wx:if="{{showBackToday}}">
     <view class="back-today-btn" bindtap="goToday">今天</view>
   </view>
 

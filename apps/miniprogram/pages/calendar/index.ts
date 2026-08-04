@@ -46,6 +46,7 @@ Page({
     todayWeather: null as WeatherForecast | null,
     weatherLoading: true,
     weatherError: false,
+    showBackToday: false,
     loading: true,
     error: false,
     errorMessage: "",
@@ -76,6 +77,7 @@ Page({
       monthLabel: monthLabel(year, month),
       cells: buildMonthGrid(year, month, today),
       selectedDate: today,
+      showBackToday: false,
     });
   },
 
@@ -183,6 +185,7 @@ Page({
       selectedTimeText: summary ? formatTimeRange(summary.shiftSnapshot) ?? "休息" : "",
       selectedLocation: summary?.locationSnapshot?.name ?? "",
       selectedDuration: summary ? durationLabel(summary.shiftSnapshot) : "",
+      showBackToday: date !== todayString(),
     });
   },
 
