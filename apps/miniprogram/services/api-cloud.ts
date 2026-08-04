@@ -26,7 +26,7 @@ async function authResult(displayName?: string): Promise<AuthResponse> {
   const result = await callCloud<{ user: User; workspace: Workspace }>("auth.me", {
     displayName: displayName ?? "",
   });
-  setSession(CLOUD_TOKEN, result.user, result.workspace);
+  setSession(CLOUD_TOKEN, result.user, result.workspace, "cloud");
   return { accessToken: CLOUD_TOKEN, ...result };
 }
 

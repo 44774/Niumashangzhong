@@ -77,12 +77,17 @@ try {
   if (backend) {
     if (cloudMode) {
       const start = Date.now();
+      try {
+        await page.callMethod("onWechatLogin");
+      } catch (err) {
+        record("云登录触发", false, err.message);
+      }
       while (Date.now() - start < 25_000) {
         page = await miniProgram.currentPage();
         if (page?.path === "pages/calendar/index") break;
         await sleep(1000);
       }
-      record("云开发自动登录进入日历", page?.path === "pages/calendar/index", page?.path);
+      record("云登录进入日历", page?.path === "pages/calendar/index", page?.path);
       try {
         await miniProgram.evaluate(() => {
           wx.cloud.callFunction({
