@@ -35,14 +35,15 @@
 
 .float-area {
   position: relative;
-  height: 0;
+  height: 160rpx;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 32rpx;
   z-index: var(--wc-zIndex-sticky);
 }
 
 .back-today-btn {
-  position: absolute;
-  right: 32rpx;
-  top: 32rpx;
   width: 112rpx;
   height: 112rpx;
   border-radius: 50%;
