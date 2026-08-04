@@ -1,9 +1,10 @@
-import { db, _, requireWorkspace, writeAudit } from "./db";
+import { db, requireWorkspace, writeAudit } from "./db";
 import { toShareSnapshot } from "./map";
 import { assert, assertDate, CloudError, nowIso } from "./util";
 import { forecastRange, resolveLocation } from "./weather";
 import { formatTimeRangeFromSnapshot } from "@workcal/schedule-engine";
 import { readHolidayRange } from "./holiday";
+import { mergedRuleInstances } from "./schedule";
 
 export async function create(openid: string, payload: any) {
   await requireWorkspace(openid, payload.workspaceId);
@@ -24,18 +25,14 @@ export async function create(openid: string, payload: any) {
   const location = await resolveLocation(openid);
   const weathers = await forecastRange(location, payload.rangeStart, payload.rangeEnd);
   const weatherByDate = new Map(weathers.map((w) => [w.date, w]));
-  const instances = await db
-    .collection("scheduleInstances")
-    .where({
-      workspaceId: payload.workspaceId,
-      ownerOpenid: openid,
-      businessDate: _.gte(payload.rangeStart).and(_.lte(payload.rangeEnd)),
-    })
-    .orderBy("businessDate", "asc")
-    .limit(1000)
-    .get();
+  const instances = await mergedRuleInstances(
+    openid,
+    payload.workspaceId,
+    payload.rangeStart,
+    payload.rangeEnd,
+  );
   const holidayMap = await readHolidayRange(payload.rangeStart, payload.rangeEnd);
-  const entries = instances.data.map((row: any) => {
+  const entries = instances.map((row: any) => {
     const forecast = weatherByDate.get(row.businessDate);
     return {
       date: row.businessDate,

@@ -132,8 +132,6 @@ export async function list(
   if (payload.from > payload.to) {
     throw new CloudError("VALIDATION_ERROR", "from 不能晚于 to");
   }
-  // 循环规则按需向后滚动补齐，保证“设置一次、一直循环”
-  await extendRules(openid, payload.workspaceId, payload.to);
   const res = await db
     .collection("scheduleInstances")
     .where({
@@ -152,6 +150,81 @@ export async function list(
       )
     : res.data;
   return visible.map(toScheduleInstance);
+}
+
+/** 内存计算某条规则某一天的班次（不写库）。 */
+function computeRuleInstanceForDate(
+  rule: any,
+  templateById: Map<string, any>,
+  date: string,
+): any | null {
+  const offset = diffDays(rule.startDate, date);
+  if (offset < 0) return null;
+  if (rule.endDate && date > rule.endDate) return null;
+  const sequence = rule.sequence ?? [];
+  if (sequence.length === 0) return null;
+  const item = sequence[offset % sequence.length];
+  const tpl = item ? templateById.get(item.shiftTemplateId) : undefined;
+  if (!tpl) return null;
+  const snap = snapshotFromTemplate(tpl);
+  const times = instanceTimes(date, snap, rule.timezone ?? "Asia/Shanghai");
+  return {
+    _id: `rule:${rule._id}:${date}`,
+    workspaceId: rule.workspaceId,
+    ownerOpenid: rule.ownerOpenid,
+    businessDate: date,
+    timezone: rule.timezone ?? "Asia/Shanghai",
+    startsAt: times.startsAt,
+    endsAt: times.endsAt,
+    kind: snap.kind,
+    shiftSnapshot: snap,
+    locationSnapshot: null,
+    note: null,
+    status: "scheduled",
+    source: "rule",
+    sourceRuleId: rule._id,
+    version: 1,
+    history: [],
+  };
+}
+
+/** 已存在实例 + 当前排班表内存计算补全（分享海报等服务端读取用，不写库）。 */
+export async function mergedRuleInstances(
+  openid: string,
+  workspaceId: string,
+  from: string,
+  to: string,
+): Promise<any[]> {
+  const existingRes = await db
+    .collection("scheduleInstances")
+    .where({ workspaceId, ownerOpenid: openid, businessDate: _.gte(from).and(_.lte(to)) })
+    .limit(1000)
+    .get();
+  const existing = existingRes.data;
+  const userRes = await db.collection("users").doc(openid).get();
+  const activeRuleId = userRes.data?.activeRuleId;
+  if (!activeRuleId) return existing;
+  const ruleRes = await db.collection("scheduleRules").doc(activeRuleId).get();
+  const rule = ruleRes.data;
+  if (!rule || rule.isActive === false) return existing;
+  const ids = rule.sequence.map((s: any) => s.shiftTemplateId);
+  const tplRes = await db
+    .collection("shiftTemplates")
+    .where({ workspaceId, _id: _.in(ids) })
+    .limit(100)
+    .get();
+  const tplMap: Map<string, any> = new Map(tplRes.data.map((t: any) => [t._id, t]));
+  const byDate = new Map(existing.map((r: any) => [r.businessDate, r]));
+  const out = [...existing];
+  let cursor = from;
+  while (cursor <= to) {
+    if (!byDate.has(cursor)) {
+      const virtual = computeRuleInstanceForDate(rule, tplMap, cursor);
+      if (virtual) out.push(virtual);
+    }
+    cursor = addDays(cursor, 1);
+  }
+  return out.sort((a: any, b: any) => (a.businessDate < b.businessDate ? -1 : 1));
 }
 
 function diffDays(from: string, to: string): number {
@@ -194,7 +267,7 @@ export async function extendRules(
       .where({ workspaceId, _id: _.in(ids) })
       .limit(100)
       .get();
-    const tplMap = new Map(tplRes.data.map((t: any) => [t._id, t]));
+    const tplMap: Map<string, any> = new Map(tplRes.data.map((t: any) => [t._id, t]));
     const existingRes = await db
       .collection("scheduleInstances")
       .where(
@@ -384,7 +457,7 @@ export async function createRule(openid: string, payload: any) {
     .where({ workspaceId: payload.workspaceId, _id: _.in(ids) })
     .limit(100)
     .get();
-  const tplMap = new Map(tplRes.data.map((t: any) => [t._id, t]));
+  const tplMap: Map<string, any> = new Map(tplRes.data.map((t: any) => [t._id, t]));
   for (const id of ids) {
     assert(tplMap.has(id), "NOT_FOUND", `班次模板 ${id} 不存在`, 404);
   }

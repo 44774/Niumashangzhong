@@ -525,11 +525,7 @@ export const api = {
   },
 
   async createShareSnapshot(input: ShareSnapshotInput): Promise<ShareSnapshot> {
-    const docs = read<LocalInstance[]>(LOCAL_SCHEDULES_KEY, []);
-    const instances = docs
-      .filter((d) => d.businessDate >= input.rangeStart && d.businessDate <= input.rangeEnd)
-      .sort((a, b) => (a.businessDate < b.businessDate ? -1 : 1))
-      .map(toInstance);
+    const instances = localMergedInstances(input.rangeStart, input.rangeEnd);
     const weatherList = await this.weather(input.rangeStart, input.rangeEnd);
     const holidayMap = await ensureLocalHoliday(input.rangeStart, input.rangeEnd);
     const privacy = {
@@ -698,4 +694,55 @@ async function extendLocalRules(upToDate: string): Promise<void> {
   if (changed) {
     write(LOCAL_SCHEDULES_KEY, docs);
   }
+}
+
+/** 本地：已存在实例 + 当前排班表内存计算补全（不写存储）。 */
+function localMergedInstances(from: string, to: string): ScheduleInstance[] {
+  const docs = read<LocalInstance[]>(LOCAL_SCHEDULES_KEY, []);
+  const existing = docs
+    .filter((d) => d.businessDate >= from && d.businessDate <= to)
+    .sort((a, b) => (a.businessDate < b.businessDate ? -1 : 1))
+    .map(toInstance);
+  const rules = read<LocalRule[]>(LOCAL_RULES_KEY, []).filter((r) => r.isActive);
+  const active = read<string>(LOCAL_ACTIVE_RULE_KEY, "");
+  const activeRule = rules.find((r) => r.id === active);
+  if (!activeRule) return existing;
+  const templates = ensureTemplates();
+  const templateById = new Map(templates.map((t) => [t.id, t]));
+  const byDate = new Map(existing.map((i) => [i.businessDate, i]));
+  const merged = [...existing];
+  let cursor = from;
+  while (cursor <= to) {
+    if (!byDate.has(cursor)) {
+      const offset = diffDays(activeRule.startDate, cursor);
+      if (offset >= 0 && (!activeRule.endDate || cursor <= activeRule.endDate)) {
+        const seq = activeRule.sequence ?? [];
+        if (seq.length > 0) {
+          const item = seq[offset % seq.length];
+          const tpl = item ? templateById.get(item.shiftTemplateId) : undefined;
+          if (tpl) {
+            const snap = snapshotFromTemplate(tpl);
+            const times = instanceTimes(cursor, snap);
+            merged.push({
+              id: `rule:${activeRule.id}:${cursor}`,
+              ownerUserId: "local-user",
+              businessDate: cursor,
+              timezone: "Asia/Shanghai",
+              startsAt: times.startsAt,
+              endsAt: times.endsAt,
+              kind: snap.kind,
+              status: "scheduled",
+              source: "rule",
+              shiftSnapshot: snap,
+              locationSnapshot: null,
+              note: null,
+              version: 1,
+            });
+          }
+        }
+      }
+    }
+    cursor = addDaysLocal(cursor, 1);
+  }
+  return merged.sort((a, b) => (a.businessDate < b.businessDate ? -1 : 1));
 }

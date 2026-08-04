@@ -142,9 +142,8 @@ const weatherOk =
   result?.weather && result.weather.ok && Array.isArray(result.weather.data) && result.weather.data.length > 0;
 const shareOvertime =
   result?.share && result.share.ok && result.share.data?.entries?.[0]?.overtime === true;
-const rollingRule =
-  result?.rule && result.rule.ok && result.farList && result.farList.ok &&
-  Array.isArray(result.farList.data) && result.farList.data.length > 0;
+// 未来排班改为客户端本地计算，服务端读接口不再写库；此处仅确认规则列表可用
+const rollingRule = result?.rule && result.rule.ok && result.farList && result.farList.ok;
 const ruleManagement =
   result?.ruleList && result.ruleList.ok && result.ruleList.data.length > 0 &&
   result?.switched?.ok === true &&
@@ -156,7 +155,7 @@ console.log("weather.get 08-05:", weatherOk ? JSON.stringify(result.weather.data
 console.log("schedule.create 10-01:", result?.created?.ok === true ? "ok" : JSON.stringify(result?.created));
 console.log("share.create 10-01 overtime:", shareOvertime ? "true" : JSON.stringify(result?.share));
 console.log("rule.create:", result?.rule?.ok === true ? "ok" : JSON.stringify(result?.rule));
-console.log("schedule.list 11-07..11-12 条数:", Array.isArray(result?.farList?.data) ? result.farList.data.length : 0);
+console.log("schedule.list 11-07..11-12 条数（应为0，由客户端本地计算）:", Array.isArray(result?.farList?.data) ? result.farList.data.length : 0);
 console.log("rule.list 条数:", result?.ruleList?.data?.length ?? 0, "| 切换:", result?.switched?.ok === true, "| 删除:", result?.removed?.ok === true);
 
 const pass =

@@ -992,7 +992,6 @@ async function list2(openid, payload) {
   if (payload.from > payload.to) {
     throw new CloudError("VALIDATION_ERROR", "from \u4E0D\u80FD\u665A\u4E8E to");
   }
-  await extendRules(openid, payload.workspaceId, payload.to);
   const res = await db.collection("scheduleInstances").where({
     workspaceId: payload.workspaceId,
     ownerOpenid: openid,
@@ -1005,77 +1004,67 @@ async function list2(openid, payload) {
   ) : res.data;
   return visible.map(toScheduleInstance);
 }
+function computeRuleInstanceForDate(rule, templateById, date) {
+  const offset = diffDays(rule.startDate, date);
+  if (offset < 0) return null;
+  if (rule.endDate && date > rule.endDate) return null;
+  const sequence = rule.sequence ?? [];
+  if (sequence.length === 0) return null;
+  const item = sequence[offset % sequence.length];
+  const tpl = item ? templateById.get(item.shiftTemplateId) : void 0;
+  if (!tpl) return null;
+  const snap = snapshotFromTemplate(tpl);
+  const times = instanceTimes(date, snap, rule.timezone ?? "Asia/Shanghai");
+  return {
+    _id: `rule:${rule._id}:${date}`,
+    workspaceId: rule.workspaceId,
+    ownerOpenid: rule.ownerOpenid,
+    businessDate: date,
+    timezone: rule.timezone ?? "Asia/Shanghai",
+    startsAt: times.startsAt,
+    endsAt: times.endsAt,
+    kind: snap.kind,
+    shiftSnapshot: snap,
+    locationSnapshot: null,
+    note: null,
+    status: "scheduled",
+    source: "rule",
+    sourceRuleId: rule._id,
+    version: 1,
+    history: []
+  };
+}
+async function mergedRuleInstances(openid, workspaceId, from, to) {
+  var _a;
+  const existingRes = await db.collection("scheduleInstances").where({ workspaceId, ownerOpenid: openid, businessDate: _.gte(from).and(_.lte(to)) }).limit(1e3).get();
+  const existing = existingRes.data;
+  const userRes = await db.collection("users").doc(openid).get();
+  const activeRuleId = (_a = userRes.data) == null ? void 0 : _a.activeRuleId;
+  if (!activeRuleId) return existing;
+  const ruleRes = await db.collection("scheduleRules").doc(activeRuleId).get();
+  const rule = ruleRes.data;
+  if (!rule || rule.isActive === false) return existing;
+  const ids = rule.sequence.map((s) => s.shiftTemplateId);
+  const tplRes = await db.collection("shiftTemplates").where({ workspaceId, _id: _.in(ids) }).limit(100).get();
+  const tplMap = new Map(tplRes.data.map((t) => [t._id, t]));
+  const byDate = new Map(existing.map((r) => [r.businessDate, r]));
+  const out = [...existing];
+  let cursor = from;
+  while (cursor <= to) {
+    if (!byDate.has(cursor)) {
+      const virtual = computeRuleInstanceForDate(rule, tplMap, cursor);
+      if (virtual) out.push(virtual);
+    }
+    cursor = addDays(cursor, 1);
+  }
+  return out.sort((a, b) => a.businessDate < b.businessDate ? -1 : 1);
+}
 function diffDays(from, to) {
   const [fy, fm, fd] = from.split("-").map(Number);
   const [ty, tm, td] = to.split("-").map(Number);
   return Math.round(
     (Date.UTC(ty ?? 0, (tm ?? 1) - 1, td ?? 1) - Date.UTC(fy ?? 0, (fm ?? 1) - 1, fd ?? 1)) / 864e5
   );
-}
-async function extendRules(openid, workspaceId, upToDate) {
-  const today = todayInTimezone("Asia/Shanghai");
-  const cap = addDays(today, 400);
-  const target = upToDate > cap ? cap : upToDate;
-  const rulesRes = await db.collection("scheduleRules").where({ workspaceId, ownerOpenid: openid, isActive: true }).limit(100).get();
-  for (const rule of rulesRes.data) {
-    if (rule.endDate && rule.endDate < rule.startDate) continue;
-    const end = rule.endDate && rule.endDate < target ? rule.endDate : target;
-    const days = diffDays(rule.startDate, end) + 1;
-    if (days <= 0) continue;
-    const slots = generateCycleSlots({
-      startDate: rule.startDate,
-      endDate: end,
-      sequence: rule.sequence.map((s) => s.shiftTemplateId),
-      generationHorizonDays: Math.min(days, 400)
-    });
-    const ids = Array.from(new Set(slots.map((s) => s.shiftTemplateId)));
-    const tplRes = await db.collection("shiftTemplates").where({ workspaceId, _id: _.in(ids) }).limit(100).get();
-    const tplMap = new Map(tplRes.data.map((t) => [t._id, t]));
-    const existingRes = await db.collection("scheduleInstances").where(
-      _.and([
-        {
-          workspaceId,
-          ownerOpenid: openid,
-          businessDate: _.gte(rule.startDate).and(_.lte(end))
-        },
-        _.or([{ sourceRuleId: rule._id }, { source: "manual" }])
-      ])
-    ).limit(1e3).get();
-    const occupied = new Set(existingRes.data.map((r) => r.businessDate));
-    const now = nowIso();
-    const inserts = [];
-    for (const slot of slots) {
-      if (occupied.has(slot.date)) continue;
-      const tpl = tplMap.get(slot.shiftTemplateId);
-      if (!tpl) continue;
-      const snap = snapshotFromTemplate(tpl);
-      const times = instanceTimes(slot.date, snap, rule.timezone ?? "Asia/Shanghai");
-      inserts.push(
-        db.collection("scheduleInstances").add({
-          data: {
-            workspaceId,
-            ownerOpenid: openid,
-            businessDate: slot.date,
-            timezone: rule.timezone ?? "Asia/Shanghai",
-            startsAt: times.startsAt,
-            endsAt: times.endsAt,
-            kind: snap.kind,
-            shiftSnapshot: snap,
-            locationSnapshot: null,
-            note: null,
-            status: "scheduled",
-            source: "rule",
-            sourceRuleId: rule._id,
-            version: 1,
-            history: [],
-            createdAt: now,
-            updatedAt: now
-          }
-        })
-      );
-    }
-    await chunkAll(inserts, 20);
-  }
 }
 async function create2(openid, payload) {
   await requireWorkspace(openid, payload.workspaceId);
@@ -1482,13 +1471,14 @@ async function create4(openid, payload) {
   const location = await resolveLocation(openid);
   const weathers = await forecastRange(location, payload.rangeStart, payload.rangeEnd);
   const weatherByDate = new Map(weathers.map((w) => [w.date, w]));
-  const instances = await db.collection("scheduleInstances").where({
-    workspaceId: payload.workspaceId,
-    ownerOpenid: openid,
-    businessDate: _.gte(payload.rangeStart).and(_.lte(payload.rangeEnd))
-  }).orderBy("businessDate", "asc").limit(1e3).get();
+  const instances = await mergedRuleInstances(
+    openid,
+    payload.workspaceId,
+    payload.rangeStart,
+    payload.rangeEnd
+  );
   const holidayMap = await readHolidayRange(payload.rangeStart, payload.rangeEnd);
-  const entries = instances.data.map((row) => {
+  const entries = instances.map((row) => {
     var _a2, _b2, _c2, _d2, _e2;
     const forecast = weatherByDate.get(row.businessDate);
     return {

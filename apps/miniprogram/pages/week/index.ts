@@ -4,6 +4,7 @@ import { formatDateShort, todayString, weekdayCN, weekRange } from "../../utils/
 import { formatTimeRange, weatherText } from "../../utils/format";
 import { ensureHolidayRange } from "../../services/holiday-cache";
 import { isOvertime } from "../../utils/holiday";
+import { loadRange } from "../../services/schedule-view";
 
 interface WeekRow {
   date: string;
@@ -46,7 +47,7 @@ Page({
       const today = todayString();
       const days = weekRange(today);
       const [schedules, weathers, holidayMap] = await Promise.all([
-        api.schedules(days[0], days[days.length - 1]),
+        loadRange(days[0], days[days.length - 1]),
         api.weather(days[0], days[days.length - 1]),
         ensureHolidayRange(days[0], days[days.length - 1]),
       ]);

@@ -119,7 +119,7 @@ Page({
       wx.showToast({ title: "请为序列中的每一项选择班次", icon: "none" });
       return;
     }
-    const horizon = 90;
+    const horizon = 14;
     const input: ScheduleRuleInput = {
       ownerUserId: "",
       name: ruleName.trim() || undefined,

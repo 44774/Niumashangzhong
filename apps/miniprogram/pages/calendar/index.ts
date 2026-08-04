@@ -16,6 +16,7 @@ import {
 import { durationLabel, formatTimeRange } from "../../utils/format";
 import { ensureHolidayRange } from "../../services/holiday-cache";
 import { isOvertime } from "../../utils/holiday";
+import { loadRange } from "../../services/schedule-view";
 
 Page({
   data: {
@@ -72,7 +73,7 @@ Page({
       const to = cells[cells.length - 1]?.date ?? addDays(today, 40);
       const [templates, schedules, holidayMap] = await Promise.all([
         api.shiftTemplates(true),
-        api.schedules(from, to),
+        loadRange(from, to),
         ensureHolidayRange(from, to),
       ]);
       const shiftMap: Record<string, CalendarDayShift[]> = {};

@@ -19,6 +19,7 @@ import {
 import { isMultiDay, needsLongRangeWarning } from "../../utils/share-range";
 import { ensureHolidayRange } from "../../services/holiday-cache";
 import { isOvertime } from "../../utils/holiday";
+import { loadRange } from "../../services/schedule-view";
 
 const PRIVACY_KEY = "wc_share_privacy";
 
@@ -105,7 +106,7 @@ Page({
     try {
       const { rangeStart, rangeEnd } = this.data;
       const [schedules, weatherList, holidayMap] = await Promise.all([
-        api.schedules(rangeStart, rangeEnd),
+        loadRange(rangeStart, rangeEnd),
         api.weather(rangeStart, rangeEnd),
         ensureHolidayRange(rangeStart, rangeEnd),
       ]);

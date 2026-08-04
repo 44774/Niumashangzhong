@@ -5,6 +5,7 @@ import { formatDateCN, todayString, weekdayCN } from "../../utils/date";
 import { durationLabel, formatTimeRange } from "../../utils/format";
 import { ensureHolidayRange } from "../../services/holiday-cache";
 import { isOvertime } from "../../utils/holiday";
+import { loadDateDetail } from "../../services/schedule-view";
 
 Page({
   data: {
@@ -21,6 +22,7 @@ Page({
     errorMessage: "",
     weatherError: false,
     overtime: false,
+    isVirtual: false,
   },
 
   onLoad(query: Record<string, string | undefined>) {
@@ -51,12 +53,12 @@ Page({
         detail = await api.scheduleDetail(this.data.instanceId);
       } else {
         const date = this.data.date || todayString();
-        const list = await api.schedules(date, date);
-        if (list.length === 0) {
+        const virtualDetail = await loadDateDetail(date);
+        if (!virtualDetail) {
           this.setData({ loading: false, detail: null });
           return;
         }
-        detail = await api.scheduleDetail(list[0].id);
+        detail = virtualDetail;
       }
       const snapshot = detail.shiftSnapshot;
       const holidayMap = await ensureHolidayRange(detail.businessDate, detail.businessDate);
@@ -79,6 +81,7 @@ Page({
         note: detail.note ?? "",
         weatherError: !detail.weather,
         overtime,
+        isVirtual: detail.id.startsWith("rule:"),
         loading: false,
       });
     } catch (err) {
@@ -96,7 +99,10 @@ Page({
 
   changeShift() {
     if (!this.data.detail) return;
-    wx.navigateTo({ url: `/pages/schedule-change/index?id=${this.data.detail.id}` });
+    const url = this.data.isVirtual
+      ? `/pages/schedule-change/index?date=${this.data.detail.businessDate}`
+      : `/pages/schedule-change/index?id=${this.data.detail.id}`;
+    wx.navigateTo({ url });
   },
 
   shareSchedule() {
