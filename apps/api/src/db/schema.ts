@@ -305,6 +305,7 @@ export const scheduleChangeRequests = pgTable(
     requesterUserId: uuid("requester_user_id")
       .notNull()
       .references(() => users.id),
+    businessDate: date("business_date", { mode: "string" }),
     originalSnapshot: jsonb("original_snapshot").notNull().$type<ShiftSnapshot>(),
     requestedSnapshot: jsonb("requested_snapshot").notNull().$type<ShiftSnapshot>(),
     reason: text("reason"),

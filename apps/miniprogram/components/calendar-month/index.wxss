@@ -46,6 +46,18 @@
   border-radius: 50%;
 }
 
+.change-mark {
+  position: absolute;
+  top: 4rpx;
+  right: 4rpx;
+  background: rgba(245, 158, 11, 0.15);
+  color: #b45309;
+  font-size: 18rpx;
+  border-radius: var(--wc-radius-pill);
+  padding: 0 8rpx;
+  line-height: 28rpx;
+}
+
 .day-cell.today .day-number {
   border: 2rpx solid var(--wc-color-brand-primary);
   color: var(--wc-color-brand-primary);

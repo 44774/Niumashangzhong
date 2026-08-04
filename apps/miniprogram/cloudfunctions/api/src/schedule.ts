@@ -353,6 +353,59 @@ export async function listRules(openid: string, workspaceId: string) {
   }));
 }
 
+export async function updateRule(openid: string, workspaceId: string, payload: any) {
+  await requireWorkspace(openid, workspaceId);
+  assert(payload && payload.id && payload.version != null, "VALIDATION_ERROR", "id 与 version 为必填");
+  const ruleRes = await db.collection("scheduleRules").doc(payload.id).get();
+  const rule = ruleRes.data;
+  if (!rule || rule.workspaceId !== workspaceId || rule.ownerOpenid !== openid) {
+    throw new CloudError("NOT_FOUND", "排班表不存在", 404);
+  }
+  if (rule.version !== payload.version) {
+    throw new CloudError("VERSION_CONFLICT", "数据已被修改，请刷新后重试", 409);
+  }
+  const data: Record<string, unknown> = { updatedAt: nowIso(), version: rule.version + 1 };
+  if (typeof payload.name === "string") data.name = payload.name.trim() || "排班表";
+  if (typeof payload.startDate === "string") {
+    assertDate(payload.startDate);
+    data.startDate = payload.startDate;
+  }
+  if (payload.endDate !== undefined) {
+    if (payload.endDate) assertDate(payload.endDate);
+    data.endDate = payload.endDate ?? null;
+  }
+  if (Array.isArray(payload.sequence)) {
+    assert(payload.sequence.length > 0, "VALIDATION_ERROR", "班次序列不能为空");
+    const ids = payload.sequence.map((s: any) => s.shiftTemplateId);
+    const tplRes = await db
+      .collection("shiftTemplates")
+      .where({ workspaceId, _id: _.in(ids) })
+      .limit(100)
+      .get();
+    const found = new Set(tplRes.data.map((t: any) => t._id));
+    for (const id of ids) {
+      assert(found.has(id), "NOT_FOUND", `班次模板 ${id} 不存在`, 404);
+    }
+    data.sequence = payload.sequence;
+  }
+  await db.collection("scheduleRules").doc(payload.id).update({ data });
+  const updated = await db.collection("scheduleRules").doc(payload.id).get();
+  const userRes = await db.collection("users").doc(openid).get();
+  const active = userRes.data?.activeRuleId;
+  return {
+    id: updated.data._id,
+    name: updated.data.name ?? "未命名排班表",
+    startDate: updated.data.startDate,
+    endDate: updated.data.endDate ?? null,
+    timezone: updated.data.timezone,
+    sequence: updated.data.sequence,
+    generationHorizonDays: updated.data.generationHorizonDays,
+    version: updated.data.version,
+    isActive: updated.data.isActive,
+    isCurrent: updated.data._id === active,
+  };
+}
+
 export async function switchRule(openid: string, workspaceId: string, ruleId: string) {
   await requireWorkspace(openid, workspaceId);
   const rule = await db.collection("scheduleRules").doc(ruleId).get();

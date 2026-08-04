@@ -10,6 +10,8 @@ import type {
   ScheduleInstance,
   ScheduleRuleCreateResult,
   ScheduleRuleInput,
+  ScheduleRuleUpdateInput,
+  ScheduleRuleSummary,
   ScheduleUpdateInput,
   SharePrivacyOptions,
   ShareSnapshot,
@@ -405,6 +407,39 @@ export const api = {
       }));
   },
 
+  async updateRule(input: ScheduleRuleUpdateInput): Promise<ScheduleRuleSummary> {
+    const rules = read<LocalRule[]>(LOCAL_RULES_KEY, []);
+    const index = rules.findIndex((r) => r.id === input.id);
+    if (index < 0) throw new ApiError(404, "NOT_FOUND", "排班表不存在");
+    const current = rules[index];
+    if (!current || current.version !== input.version) {
+      throw new ApiError(409, "VERSION_CONFLICT", "数据已被修改，请刷新后重试");
+    }
+    const updated: LocalRule = {
+      ...current,
+      name: typeof input.name === "string" ? input.name.trim() || "排班表" : current.name,
+      startDate: input.startDate ?? current.startDate,
+      endDate: input.endDate !== undefined ? input.endDate : current.endDate,
+      sequence: input.sequence ?? current.sequence,
+      version: current.version + 1,
+    };
+    rules[index] = updated;
+    write(LOCAL_RULES_KEY, rules);
+    const activeRuleId = read<string>(LOCAL_ACTIVE_RULE_KEY, "");
+    return {
+      id: updated.id,
+      name: updated.name,
+      startDate: updated.startDate,
+      endDate: updated.endDate,
+      timezone: updated.timezone,
+      sequence: updated.sequence,
+      generationHorizonDays: 90,
+      version: updated.version,
+      isActive: updated.isActive,
+      isCurrent: updated.id === activeRuleId,
+    };
+  },
+
   async switchRule(ruleId: string) {
     const rules = read<LocalRule[]>(LOCAL_RULES_KEY, []);
     if (!rules.some((r) => r.id === ruleId && r.isActive)) {
@@ -483,6 +518,13 @@ export const api = {
   async changeRequests(status?: string): Promise<ChangeRequest[]> {
     const list = read<ChangeRequest[]>(LOCAL_CHANGES_KEY, []);
     return status ? list.filter((c) => c.status === status) : list;
+  },
+
+  async changeRequestsInRange(from: string, to: string, page = 1): Promise<ChangeRequest[]> {
+    const list = read<ChangeRequest[]>(LOCAL_CHANGES_KEY, [])
+      .filter((c) => c.businessDate && c.businessDate >= from && c.businessDate <= to)
+      .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+    return list.slice((page - 1) * 50, page * 50);
   },
 
   async removeChangeRequest(id: string): Promise<{ removed: string }> {

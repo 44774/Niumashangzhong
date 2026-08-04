@@ -138,12 +138,11 @@ await miniProgram.evaluate(
               workspaceId,
               scheduleInstanceId: created.data.id,
               requestedShift: {
-                name: "夜班",
-                kind: "work",
-                startTime: "21:00",
-                endTime: "07:00",
-                endsNextDay: true,
-                color: "#7C3AED",
+                name: "休息",
+                kind: "rest",
+                startTime: null,
+                endTime: null,
+                color: "#94A3B8",
               },
               reason: "功能验证",
             })
@@ -153,6 +152,24 @@ await miniProgram.evaluate(
           ? await call("change.remove", {
               workspaceId,
               id: changeCreated.data.id,
+            })
+          : null;
+      const ruleUpdated =
+        rule && rule.ok && rule.data && rule.data.rule && rule.data.rule.id
+          ? await call("rule.update", {
+              workspaceId,
+              id: rule.data.rule.id,
+              version: rule.data.rule.version,
+              name: "功能验证排班表",
+            })
+          : null;
+      const changeListRange =
+        changeCreated && changeCreated.ok
+          ? await call("change.list", {
+              workspaceId,
+              from: "2026-10-01",
+              to: "2026-10-01",
+              page: 1,
             })
           : null;
       store({
@@ -169,6 +186,8 @@ await miniProgram.evaluate(
         removed,
         changeCreated,
         changeRemoved,
+        ruleUpdated,
+        changeListRange,
         workspaceId,
       });
     })();
@@ -198,6 +217,8 @@ const ruleManagement =
   result?.removed?.ok === true;
 const changeDelete =
   result?.changeCreated && result.changeCreated.ok && result?.changeRemoved?.ok === true;
+const ruleUpdate = result?.ruleUpdated && result.ruleUpdated.ok;
+const changeRange = result?.changeListRange && result.changeListRange.ok;
 
 console.log("auth.me:", result?.auth?.ok === true ? "ok" : JSON.stringify(result?.auth));
 console.log("holiday.getRange 2026-09-30..10-08 条数:", holidayCount, "| 10-01:", oct1);
@@ -208,6 +229,8 @@ console.log("rule.create:", result?.rule?.ok === true ? "ok" : JSON.stringify(re
 console.log("schedule.list 11-07..11-12 条数（应为0，由客户端本地计算）:", Array.isArray(result?.farList?.data) ? result.farList.data.length : 0);
 console.log("rule.list 条数:", result?.ruleList?.data?.length ?? 0, "| 切换:", result?.switched?.ok === true, "| 删除:", result?.removed?.ok === true);
 console.log("改班记录创建/删除:", result?.changeCreated?.ok === true, "/", result?.changeRemoved?.ok === true);
+console.log("rule.update:", result?.ruleUpdated?.ok === true ? "ok" : JSON.stringify(result?.ruleUpdated));
+console.log("change.list 范围查询:", result?.changeListRange?.ok === true ? `ok(${result.changeListRange.data?.length ?? 0})` : JSON.stringify(result?.changeListRange));
 console.log("change.create:", JSON.stringify(result?.changeCreated));
 console.log("change.remove:", JSON.stringify(result?.changeRemoved));
 
@@ -219,7 +242,9 @@ const pass =
   shareOvertime &&
   rollingRule &&
   ruleManagement &&
-  changeDelete;
+  changeDelete &&
+  ruleUpdate &&
+  changeRange;
 console.log(pass ? "\n云端功能验证通过" : "\n云端功能验证失败");
 await miniProgram.close();
 process.exit(pass ? 0 : 1);

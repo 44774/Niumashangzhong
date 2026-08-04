@@ -9,6 +9,7 @@ import type {
   ScheduleInstance,
   ScheduleRuleCreateResult,
   ScheduleRuleInput,
+  ScheduleRuleUpdateInput,
   ScheduleRuleSummary,
   ScheduleUpdateInput,
   ShareSnapshot,
@@ -103,12 +104,20 @@ export const api = {
     return ws<{ removed: string }>("rule.remove", { ruleId });
   },
 
+  async updateRule(input: ScheduleRuleUpdateInput): Promise<ScheduleRuleSummary> {
+    return ws<ScheduleRuleSummary>("rule.update", { ...input });
+  },
+
   async createChangeRequest(input: ChangeRequestInput): Promise<ChangeRequest> {
     return ws<ChangeRequest>("change.create", { ...input });
   },
 
   async changeRequests(status?: string): Promise<ChangeRequest[]> {
     return ws<ChangeRequest[]>("change.list", status ? { status } : {});
+  },
+
+  async changeRequestsInRange(from: string, to: string, page = 1): Promise<ChangeRequest[]> {
+    return ws<ChangeRequest[]>("change.list", { from, to, page });
   },
 
   async removeChangeRequest(id: string): Promise<{ removed: string }> {

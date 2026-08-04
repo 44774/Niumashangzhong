@@ -1,10 +1,10 @@
-import { api } from "../../services/api";
 import { getToken } from "../../stores/session";
 import { formatDateShort, todayString, weekdayCN, weekRange } from "../../utils/date";
 import { formatTimeRange, weatherText } from "../../utils/format";
 import { ensureHolidayRange } from "../../services/holiday-cache";
 import { isOvertime } from "../../utils/holiday";
 import { loadRange } from "../../services/schedule-view";
+import { getWeatherCached } from "../../services/weather-cache";
 
 interface WeekRow {
   date: string;
@@ -42,13 +42,13 @@ Page({
   },
 
   async load() {
-    this.setData({ loading: true, error: false });
+    this.setData({ loading: this.data.rows.length === 0, error: false });
     try {
       const today = todayString();
       const days = weekRange(today);
       const [schedules, weathers, holidayMap] = await Promise.all([
         loadRange(days[0], days[days.length - 1]),
-        api.weather(days[0], days[days.length - 1]),
+        getWeatherCached(days[0], days[days.length - 1]),
         ensureHolidayRange(days[0], days[days.length - 1]),
       ]);
       const instanceByDate = new Map(schedules.map((s) => [s.businessDate, s]));
@@ -77,11 +77,15 @@ Page({
         loading: false,
       });
     } catch (err) {
-      this.setData({
-        loading: false,
-        error: true,
-        errorMessage: (err as Error).message,
-      });
+      if (this.data.rows.length === 0) {
+        this.setData({
+          loading: false,
+          error: true,
+          errorMessage: (err as Error).message,
+        });
+      } else {
+        this.setData({ loading: false });
+      }
     }
   },
 

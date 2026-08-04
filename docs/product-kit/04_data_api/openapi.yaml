@@ -285,6 +285,43 @@ paths:
                 properties:
                   ruleId: {type: string, format: uuid}
   /schedule-rules/{id}:
+    patch:
+      tags: [Schedules]
+      summary: 编辑排班表（名称/起始/结束/序列）
+      parameters:
+        - {$ref: '#/components/parameters/WorkspaceHeader'}
+        - {$ref: '#/components/parameters/ResourceId'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [version]
+              properties:
+                version: {type: integer}
+                name: {type: [string, 'null']}
+                startDate: {type: string, format: date}
+                endDate: {type: [string, 'null'], format: date}
+                sequence:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      shiftTemplateId: {type: string, format: uuid}
+      responses:
+        '200':
+          description: 已更新
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: {type: string, format: uuid}
+                  name: {type: string}
+                  startDate: {type: string, format: date}
+                  endDate: {type: [string, 'null'], format: date}
+                  isCurrent: {type: boolean}
     delete:
       tags: [Schedules]
       summary: 删除排班表及其生成的排班
@@ -350,6 +387,15 @@ paths:
         - name: status
           in: query
           schema: {type: string, enum: [pending, approved, rejected, withdrawn, expired]}
+        - name: from
+          in: query
+          schema: {type: string, format: date}
+        - name: to
+          in: query
+          schema: {type: string, format: date}
+        - name: page
+          in: query
+          schema: {type: integer, minimum: 1, default: 1}
       responses:
         '200':
           description: 申请列表

@@ -1,6 +1,7 @@
 import { api } from "../../services/api";
 import { getToken } from "../../stores/session";
 import type { ShiftKind, ShiftTemplate } from "../../typings/api";
+import { invalidateTemplatesCache } from "../../services/meta-cache";
 
 const COLOR_OPTIONS = ["#10B981", "#2F80ED", "#7C3AED", "#F59E0B", "#EF4444", "#06B6D4", "#1F6FEB", "#94A3B8"];
 const KINDS: Array<{ value: ShiftKind; label: string }> = [
@@ -160,6 +161,7 @@ Page({
         await api.createShiftTemplate(input);
       }
       wx.showToast({ title: "已保存", icon: "success" });
+      invalidateTemplatesCache();
       this.setData({ showForm: false });
       this.load();
     } catch (err) {
@@ -192,6 +194,7 @@ Page({
             isActive: false,
           });
           wx.showToast({ title: "已停用", icon: "success" });
+          invalidateTemplatesCache();
           this.load();
         } catch (err) {
           wx.showToast({ title: (err as Error).message, icon: "none" });

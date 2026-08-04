@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { and, desc, eq, isNull } from "drizzle-orm";
+import { and, desc, eq, gte, isNull, lte } from "drizzle-orm";
 import type {
   ChangeRequest,
   ChangeRequestInput,
@@ -71,6 +71,7 @@ export async function changeRoutes(app: FastifyInstance, opts: { db: Db }): Prom
             workspaceId: ws.workspaceId,
             scheduleInstanceId: current.id,
             requesterUserId: userId,
+            businessDate: current.businessDate,
             originalSnapshot: current.shiftSnapshot,
             requestedSnapshot: requested,
             reason: body.reason ?? null,
@@ -102,7 +103,7 @@ export async function changeRoutes(app: FastifyInstance, opts: { db: Db }): Prom
     },
   );
 
-  app.get<{ Querystring: { status?: string } }>(
+  app.get<{ Querystring: { status?: string; from?: string; to?: string; page?: string } }>(
     "/change-requests",
     { schema: { tags: ["Changes"] } },
     async (req) => {
@@ -115,12 +116,20 @@ export async function changeRoutes(app: FastifyInstance, opts: { db: Db }): Prom
       if (req.query.status) {
         conditions.push(eq(scheduleChangeRequests.status, req.query.status as ChangeStatus));
       }
+      if (req.query.from && req.query.to) {
+        conditions.push(
+          gte(scheduleChangeRequests.businessDate, req.query.from),
+          lte(scheduleChangeRequests.businessDate, req.query.to),
+        );
+      }
+      const page = Math.max(1, Number(req.query.page) || 1);
       const rows = await db
         .select()
         .from(scheduleChangeRequests)
         .where(and(...conditions))
         .orderBy(desc(scheduleChangeRequests.createdAt))
-        .limit(100);
+        .limit(50)
+        .offset((page - 1) * 50);
       return rows.map(toChangeRequest);
     },
   );

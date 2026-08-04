@@ -1,6 +1,12 @@
 import { api } from "../../services/api";
 import { getToken } from "../../stores/session";
 import type { ScheduleRuleSummary } from "../../typings/api";
+import {
+  invalidateRulesCache,
+  setActiveRuleCache,
+  invalidateActiveRuleCache,
+} from "../../services/meta-cache";
+import { clearCalendarCache } from "../../services/calendar-cache";
 
 Page({
   data: {
@@ -32,10 +38,19 @@ Page({
     wx.navigateTo({ url: "/pages/cycle-create/index" });
   },
 
+  editSchedule(event: WechatMiniprogram.TouchEvent) {
+    const ruleId = event.currentTarget.dataset.id as string;
+    wx.navigateTo({ url: `/pages/cycle-create/index?ruleId=${ruleId}` });
+  },
+
   async switchRule(event: WechatMiniprogram.TouchEvent) {
     const ruleId = event.currentTarget.dataset.id as string;
     try {
       await api.switchRule(ruleId);
+      const rule = this.data.rules.find((r) => r.id === ruleId) ?? null;
+      setActiveRuleCache(rule ? { ...rule, isCurrent: true } : null);
+      invalidateRulesCache();
+      clearCalendarCache();
       wx.showToast({ title: "已切换", icon: "success" });
       this.load();
     } catch (err) {
@@ -55,6 +70,11 @@ Page({
         if (!res.confirm) return;
         try {
           await api.removeRule(ruleId);
+          if (this.data.rules.find((r) => r.id === ruleId)?.isCurrent) {
+            invalidateActiveRuleCache();
+          }
+          invalidateRulesCache();
+          clearCalendarCache();
           wx.showToast({ title: "已删除", icon: "success" });
           this.load();
         } catch (err) {

@@ -12,6 +12,7 @@
       bindlongpress="onLongPress"
     >
       <text class="day-number">{{item.day}}</text>
+      <text wx:if="{{item.hasChange}}" class="change-mark">改</text>
       <view class="day-shifts">
         <text
           wx:for="{{shiftMap[item.date] || []}}"

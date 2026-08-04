@@ -95,6 +95,7 @@ export function toChangeRequest(row: ChangeRequestRow): ChangeRequest {
   return {
     id: row.id,
     scheduleInstanceId: row.scheduleInstanceId,
+    businessDate: row.businessDate ?? row.createdAt.toISOString().slice(0, 10),
     status: row.status,
     originalSnapshot: row.originalSnapshot,
     requestedSnapshot: row.requestedSnapshot,

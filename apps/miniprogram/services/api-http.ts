@@ -8,6 +8,7 @@ import type {
   ScheduleInstance,
   ScheduleRuleCreateResult,
   ScheduleRuleInput,
+  ScheduleRuleUpdateInput,
   ScheduleRuleSummary,
   ScheduleUpdateInput,
   ShareSnapshot,
@@ -84,12 +85,20 @@ export const api = {
     return request(`/schedule-rules/${ruleId}`, { method: "DELETE" });
   },
 
+  updateRule(input: ScheduleRuleUpdateInput): Promise<ScheduleRuleSummary> {
+    return request(`/schedule-rules/${input.id}`, { method: "PATCH", data: input });
+  },
+
   createChangeRequest(input: ChangeRequestInput): Promise<ChangeRequest> {
     return request("/change-requests", { method: "POST", data: input, idempotencyKey: `change:${input.scheduleInstanceId}:${Date.now()}` });
   },
 
   changeRequests(status?: string): Promise<ChangeRequest[]> {
     return request(`/change-requests${status ? `?status=${status}` : ""}`);
+  },
+
+  changeRequestsInRange(from: string, to: string, page = 1): Promise<ChangeRequest[]> {
+    return request(`/change-requests?from=${from}&to=${to}&page=${page}`);
   },
 
   removeChangeRequest(id: string): Promise<{ removed: string }> {

@@ -456,6 +456,65 @@ export async function scheduleRoutes(
     },
   );
 
+  app.patch<{ Params: { id: string }; Body: import("@workcal/shared-types").ScheduleRuleUpdateInput }>(
+    "/schedule-rules/:id",
+    { schema: { tags: ["Schedules"] } },
+    async (req) => {
+      const userId = await requireAuth(req);
+      const ws = await requireWorkspace(req, db);
+      const rows = await db
+        .select()
+        .from(scheduleRules)
+        .where(
+          and(
+            eq(scheduleRules.id, req.params.id),
+            eq(scheduleRules.workspaceId, ws.workspaceId),
+            eq(scheduleRules.ownerUserId, userId),
+            isNull(scheduleRules.deletedAt),
+          ),
+        )
+        .limit(1);
+      const current = rows[0];
+      if (!current) throw notFound("排班表不存在");
+      const body = req.body;
+      if (body.version !== current.version) throw versionConflict();
+      const data: Partial<typeof current> = { version: current.version + 1, updatedAt: new Date() };
+      if (typeof body.name === "string") data.name = body.name.trim() || "排班表";
+      if (typeof body.startDate === "string") {
+        validateBusinessDate(body.startDate);
+        data.startDate = body.startDate;
+      }
+      if (body.endDate !== undefined) {
+        if (body.endDate) validateBusinessDate(body.endDate);
+        data.endDate = body.endDate ?? null;
+      }
+      if (Array.isArray(body.sequence)) {
+        if (body.sequence.length === 0) throw validationError("班次序列不能为空");
+        data.sequence = body.sequence;
+      }
+      const updated = await db
+        .update(scheduleRules)
+        .set(data)
+        .where(eq(scheduleRules.id, req.params.id))
+        .returning();
+      const row = updated[0];
+      if (!row) throw notFound("排班表不存在");
+      const userRow = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+      return {
+        id: row.id,
+        name: row.name ?? "未命名排班表",
+        startDate: row.startDate,
+        endDate: row.endDate,
+        timezone: row.timezone,
+        sequence: row.sequence,
+        generationHorizonDays: row.generationHorizonDays,
+        version: row.version,
+        isActive: row.isActive,
+        isCurrent: row.id === userRow[0]?.activeRuleId,
+      };
+    },
+  );
+
   app.delete<{ Params: { id: string } }>(
     "/schedule-rules/:id",
     { schema: { tags: ["Schedules"] } },

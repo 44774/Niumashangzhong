@@ -71,3 +71,31 @@
   font-size: 22rpx;
   margin-top: 8rpx;
 }
+
+.month-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.month-arrow {
+  font-size: 44rpx;
+  color: var(--wc-color-brand-primary);
+  padding: 8rpx 32rpx;
+}
+
+.month-label {
+  font-size: 34rpx;
+  font-weight: 700;
+}
+
+.delete-btn {
+  margin-top: 20rpx;
+  background: rgba(239, 68, 68, 0.08);
+  color: var(--wc-color-semantic-danger);
+  border: 1rpx solid var(--wc-color-semantic-danger);
+  border-radius: var(--wc-radius-md);
+  height: 76rpx;
+  line-height: 76rpx;
+  font-size: 28rpx;
+}

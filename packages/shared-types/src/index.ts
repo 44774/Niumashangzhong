@@ -171,6 +171,15 @@ export interface ScheduleRuleSummary {
   isCurrent: boolean;
 }
 
+export interface ScheduleRuleUpdateInput {
+  id: string;
+  version: number;
+  name?: string | null;
+  startDate?: string;
+  endDate?: string | null;
+  sequence?: Array<{ shiftTemplateId: string }>;
+}
+
 export interface ScheduleConflict {
   type: ConflictType;
   severity: ConflictSeverity;
@@ -195,6 +204,7 @@ export interface ChangeRequestInput {
 export interface ChangeRequest {
   id: string;
   scheduleInstanceId: string;
+  businessDate?: string;
   status: ChangeStatus;
   originalSnapshot: ShiftSnapshot;
   requestedSnapshot: ShiftSnapshot;

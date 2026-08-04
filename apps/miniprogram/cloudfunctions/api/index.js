@@ -284,6 +284,7 @@ function toChangeRequest(doc) {
   return {
     id: doc._id,
     scheduleInstanceId: doc.scheduleInstanceId,
+    businessDate: doc.businessDate ?? (doc.createdAt ? doc.createdAt.slice(0, 10) : void 0),
     status: doc.status,
     originalSnapshot: doc.originalSnapshot,
     requestedSnapshot: doc.requestedSnapshot,
@@ -1147,6 +1148,55 @@ async function listRules(openid, workspaceId) {
     isCurrent: r._id === active
   }));
 }
+async function updateRule(openid, workspaceId, payload) {
+  var _a;
+  await requireWorkspace(openid, workspaceId);
+  assert(payload && payload.id && payload.version != null, "VALIDATION_ERROR", "id \u4E0E version \u4E3A\u5FC5\u586B");
+  const ruleRes = await db.collection("scheduleRules").doc(payload.id).get();
+  const rule = ruleRes.data;
+  if (!rule || rule.workspaceId !== workspaceId || rule.ownerOpenid !== openid) {
+    throw new CloudError("NOT_FOUND", "\u6392\u73ED\u8868\u4E0D\u5B58\u5728", 404);
+  }
+  if (rule.version !== payload.version) {
+    throw new CloudError("VERSION_CONFLICT", "\u6570\u636E\u5DF2\u88AB\u4FEE\u6539\uFF0C\u8BF7\u5237\u65B0\u540E\u91CD\u8BD5", 409);
+  }
+  const data = { updatedAt: nowIso(), version: rule.version + 1 };
+  if (typeof payload.name === "string") data.name = payload.name.trim() || "\u6392\u73ED\u8868";
+  if (typeof payload.startDate === "string") {
+    assertDate(payload.startDate);
+    data.startDate = payload.startDate;
+  }
+  if (payload.endDate !== void 0) {
+    if (payload.endDate) assertDate(payload.endDate);
+    data.endDate = payload.endDate ?? null;
+  }
+  if (Array.isArray(payload.sequence)) {
+    assert(payload.sequence.length > 0, "VALIDATION_ERROR", "\u73ED\u6B21\u5E8F\u5217\u4E0D\u80FD\u4E3A\u7A7A");
+    const ids = payload.sequence.map((s) => s.shiftTemplateId);
+    const tplRes = await db.collection("shiftTemplates").where({ workspaceId, _id: _.in(ids) }).limit(100).get();
+    const found = new Set(tplRes.data.map((t) => t._id));
+    for (const id of ids) {
+      assert(found.has(id), "NOT_FOUND", `\u73ED\u6B21\u6A21\u677F ${id} \u4E0D\u5B58\u5728`, 404);
+    }
+    data.sequence = payload.sequence;
+  }
+  await db.collection("scheduleRules").doc(payload.id).update({ data });
+  const updated = await db.collection("scheduleRules").doc(payload.id).get();
+  const userRes = await db.collection("users").doc(openid).get();
+  const active = (_a = userRes.data) == null ? void 0 : _a.activeRuleId;
+  return {
+    id: updated.data._id,
+    name: updated.data.name ?? "\u672A\u547D\u540D\u6392\u73ED\u8868",
+    startDate: updated.data.startDate,
+    endDate: updated.data.endDate ?? null,
+    timezone: updated.data.timezone,
+    sequence: updated.data.sequence,
+    generationHorizonDays: updated.data.generationHorizonDays,
+    version: updated.data.version,
+    isActive: updated.data.isActive,
+    isCurrent: updated.data._id === active
+  };
+}
 async function switchRule(openid, workspaceId, ruleId) {
   await requireWorkspace(openid, workspaceId);
   const rule = await db.collection("scheduleRules").doc(ruleId).get();
@@ -1224,6 +1274,7 @@ async function create3(openid, payload) {
     const cr = {
       workspaceId: payload.workspaceId,
       scheduleInstanceId: payload.scheduleInstanceId,
+      businessDate: current.businessDate,
       requesterOpenid: openid,
       originalSnapshot: txCurrent.shiftSnapshot,
       requestedSnapshot: requested,
@@ -1254,7 +1305,14 @@ async function list3(openid, payload) {
   if (payload.status) {
     where.status = payload.status;
   }
-  const res = await db.collection("changeRequests").where(where).orderBy("createdAt", "desc").limit(100).get();
+  if (payload.from && payload.to) {
+    where.businessDate = _.gte(payload.from).and(_.lte(payload.to));
+  }
+  const page = Math.max(1, payload.page ?? 1);
+  const pageSize = 50;
+  let query = db.collection("changeRequests").where(where).orderBy("createdAt", "desc");
+  if (page > 1) query = query.skip((page - 1) * pageSize);
+  const res = await query.limit(pageSize).get();
   return res.data.map(toChangeRequest);
 }
 async function remove(openid, payload) {
@@ -1428,6 +1486,8 @@ exports.main = async (event) => {
         return ok(await update2(openid, payload));
       case "rule.create":
         return ok(await createRule(openid, payload));
+      case "rule.update":
+        return ok(await updateRule(openid, payload.workspaceId, payload));
       case "rule.list":
         return ok(await listRules(openid, payload.workspaceId));
       case "rule.switch":

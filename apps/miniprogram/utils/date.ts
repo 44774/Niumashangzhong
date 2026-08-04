@@ -94,3 +94,19 @@ export function thisMonthRange(): { start: string; end: string } {
   const end = addDays(`${year}-${pad2(month + 1)}-01`, -1);
   return { start, end };
 }
+
+export function monthRange(year: number, month: number): { start: string; end: string } {
+  const start = `${year}-${pad2(month)}-01`;
+  const end = addDays(`${year}-${pad2(month + 1)}-01`, -1);
+  return { start, end };
+}
+
+/** 上月 + 当月 + 下月 的完整窗口。 */
+export function threeMonthRange(year: number, month: number): { from: string; to: string } {
+  const prev = month === 1 ? { year: year - 1, month: 12 } : { year, month: month - 1 };
+  const next = month === 12 ? { year: year + 1, month: 1 } : { year, month: month + 1 };
+  return {
+    from: monthRange(prev.year, prev.month).start,
+    to: monthRange(next.year, next.month).end,
+  };
+}

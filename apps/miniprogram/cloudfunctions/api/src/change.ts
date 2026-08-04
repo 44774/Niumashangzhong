@@ -1,5 +1,4 @@
-import { db } from "./db";
-import { requireWorkspace, writeAudit } from "./db";
+import { db, _, requireWorkspace, writeAudit } from "./db";
 import { toChangeRequest } from "./map";
 import { assert, CloudError, nowIso } from "./util";
 import { assertNoOverlap, instanceTimes, normalizeSnapshot } from "./schedule";
@@ -50,6 +49,7 @@ export async function create(openid: string, payload: any) {
     const cr = {
       workspaceId: payload.workspaceId,
       scheduleInstanceId: payload.scheduleInstanceId,
+      businessDate: current.businessDate,
       requesterOpenid: openid,
       originalSnapshot: txCurrent.shiftSnapshot,
       requestedSnapshot: requested,
@@ -73,7 +73,16 @@ export async function create(openid: string, payload: any) {
   return toChangeRequest(result.change);
 }
 
-export async function list(openid: string, payload: { workspaceId: string; status?: string }) {
+export async function list(
+  openid: string,
+  payload: {
+    workspaceId: string;
+    status?: string;
+    from?: string;
+    to?: string;
+    page?: number;
+  },
+) {
   await requireWorkspace(openid, payload.workspaceId);
   const where: Record<string, unknown> = {
     workspaceId: payload.workspaceId,
@@ -82,12 +91,14 @@ export async function list(openid: string, payload: { workspaceId: string; statu
   if (payload.status) {
     where.status = payload.status;
   }
-  const res = await db
-    .collection("changeRequests")
-    .where(where)
-    .orderBy("createdAt", "desc")
-    .limit(100)
-    .get();
+  if (payload.from && payload.to) {
+    where.businessDate = _.gte(payload.from).and(_.lte(payload.to));
+  }
+  const page = Math.max(1, payload.page ?? 1);
+  const pageSize = 50;
+  let query = db.collection("changeRequests").where(where).orderBy("createdAt", "desc");
+  if (page > 1) query = query.skip((page - 1) * pageSize);
+  const res = await query.limit(pageSize).get();
   return res.data.map(toChangeRequest);
 }
 

@@ -33,9 +33,12 @@ export const api = {
   listRules: () => current().listRules(),
   switchRule: (ruleId: string) => current().switchRule(ruleId),
   removeRule: (ruleId: string) => current().removeRule(ruleId),
+  updateRule: (input: Parameters<typeof cloudApi.updateRule>[0]) => current().updateRule(input),
   createChangeRequest: (input: Parameters<typeof cloudApi.createChangeRequest>[0]) =>
     current().createChangeRequest(input),
   changeRequests: (status?: string) => current().changeRequests(status),
+  changeRequestsInRange: (from: string, to: string, page?: number) =>
+    current().changeRequestsInRange(from, to, page),
   removeChangeRequest: (id: string) => current().removeChangeRequest(id),
   weather: (
     from: string,

@@ -6,6 +6,7 @@ import { durationLabel, formatTimeRange } from "../../utils/format";
 import { ensureHolidayRange } from "../../services/holiday-cache";
 import { isOvertime } from "../../utils/holiday";
 import { loadDateDetail } from "../../services/schedule-view";
+import type { ChangeRequest } from "../../typings/api";
 
 Page({
   data: {
@@ -23,6 +24,7 @@ Page({
     weatherError: false,
     overtime: false,
     isVirtual: false,
+    changeRecords: [] as Array<ChangeRequest & { statusText: string; createdAtText: string }>,
   },
 
   onLoad(query: Record<string, string | undefined>) {
@@ -72,8 +74,21 @@ Page({
           createdAtText: `${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`,
         };
       });
+      const changes = await api
+        .changeRequestsInRange(detail.businessDate, detail.businessDate)
+        .catch(() => []);
+      const changeRecords = changes.map((c) => {
+        const d = new Date(c.createdAt);
+        const pad = (n: number) => String(n).padStart(2, "0");
+        return {
+          ...c,
+          statusText: "已生效",
+          createdAtText: `${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`,
+        };
+      });
       this.setData({
         detail: { ...detail, history },
+        changeRecords,
         dateLabel: `${formatDateCN(detail.businessDate)} ${weekdayCN(detail.businessDate)}`,
         timeText: formatTimeRange(snapshot) ?? "",
         duration: durationLabel(snapshot),

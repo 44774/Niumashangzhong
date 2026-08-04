@@ -62,6 +62,7 @@ export function toChangeRequest(doc: any) {
   return {
     id: doc._id,
     scheduleInstanceId: doc.scheduleInstanceId,
+    businessDate: doc.businessDate ?? (doc.createdAt ? doc.createdAt.slice(0, 10) : undefined),
     status: doc.status,
     originalSnapshot: doc.originalSnapshot,
     requestedSnapshot: doc.requestedSnapshot,

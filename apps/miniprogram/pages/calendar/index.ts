@@ -6,10 +6,10 @@ import type { CalendarDayShift } from "../../components/calendar-month/index";
 import { api } from "../../services/api";
 import { getToken } from "../../stores/session";
 import {
-  addDays,
   buildMonthGrid,
   monthLabel,
   parseDate,
+  threeMonthRange,
   todayString,
   weekdayCN,
 } from "../../utils/date";
@@ -17,6 +17,11 @@ import { durationLabel, formatTimeRange } from "../../utils/format";
 import { ensureHolidayRange } from "../../services/holiday-cache";
 import { isOvertime } from "../../utils/holiday";
 import { loadRange } from "../../services/schedule-view";
+import {
+  getCalendarWindow,
+  setCalendarWindow,
+  type CalendarWindowData,
+} from "../../services/calendar-cache";
 
 Page({
   data: {
@@ -32,6 +37,7 @@ Page({
     todayTimeText: "",
     todayLocation: "",
     todayDuration: "",
+    changeDates: [] as string[],
     loading: true,
     error: false,
     errorMessage: "",
@@ -65,16 +71,17 @@ Page({
 
   async load() {
     if (!getToken()) return;
-    this.setData({ loading: true, error: false });
+    const { from, to } = threeMonthRange(this.data.year, this.data.month);
+    const cached = getCalendarWindow(this.data.year, this.data.month);
+    if (cached) this.applyWindow(cached);
+    this.setData({ loading: !cached, error: false });
     try {
       const today = todayString();
-      const cells = this.data.cells;
-      const from = cells[0]?.date ?? addDays(today, -7);
-      const to = cells[cells.length - 1]?.date ?? addDays(today, 40);
-      const [templates, schedules, holidayMap] = await Promise.all([
+      const [templates, schedules, holidayMap, changes] = await Promise.all([
         api.shiftTemplates(true),
         loadRange(from, to),
         ensureHolidayRange(from, to),
+        api.changeRequestsInRange(from, to).catch(() => []),
       ]);
       const shiftMap: Record<string, CalendarDayShift[]> = {};
       for (const item of schedules) {
@@ -88,7 +95,10 @@ Page({
         shiftMap[item.businessDate] = list;
       }
       const todaySummary = schedules.find((s) => s.businessDate === today) ?? null;
-      this.setData({
+      const changeDates = Array.from(
+        new Set(changes.map((c) => c.businessDate).filter((d): d is string => Boolean(d))),
+      );
+      const windowData: CalendarWindowData = {
         shiftMap,
         legend: templates,
         todaySummary,
@@ -100,15 +110,43 @@ Page({
         todayDuration: todaySummary
           ? durationLabel(todaySummary.shiftSnapshot)
           : "",
+        changeDates,
+      };
+      setCalendarWindow(this.data.year, this.data.month, windowData);
+      this.applyWindow(windowData);
+      this.setData({
         loading: false,
       });
     } catch (err) {
-      this.setData({
-        loading: false,
-        error: true,
-        errorMessage: (err as Error).message,
-      });
+      if (!cached) {
+        this.setData({
+          loading: false,
+          error: true,
+          errorMessage: (err as Error).message,
+        });
+      } else {
+        this.setData({ loading: false });
+      }
     }
+  },
+
+  applyWindow(data: CalendarWindowData) {
+    const changeSet = new Set(data.changeDates);
+    const cells = this.data.cells.map((cell) => ({
+      ...cell,
+      hasChange: changeSet.has(cell.date),
+    }));
+    this.setData({
+      shiftMap: data.shiftMap,
+      legend: data.legend,
+      todaySummary: data.todaySummary,
+      todayLabel: data.todayLabel,
+      todayTimeText: data.todayTimeText,
+      todayLocation: data.todayLocation,
+      todayDuration: data.todayDuration,
+      changeDates: data.changeDates,
+      cells,
+    });
   },
 
   changeMonth(delta: number) {

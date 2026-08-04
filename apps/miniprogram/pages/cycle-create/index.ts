@@ -3,6 +3,8 @@ import { getToken } from "../../stores/session";
 import type { ScheduleRuleInput, ShiftTemplate } from "../../typings/api";
 import { addDays, todayString } from "../../utils/date";
 import { cycleSlots } from "../../utils/local-schedule";
+import { invalidateRulesCache } from "../../services/meta-cache";
+import { setActiveRuleCache } from "../../services/meta-cache";
 
 Page({
   data: {
@@ -18,10 +20,17 @@ Page({
     endDate: "",
     preview: [] as Array<{ date: string; name: string; color: string }>,
     submitting: false,
+    editingId: "",
+    editingVersion: 1,
   },
 
-  onLoad() {
-    this.setData({ startDate: todayString(), endDate: addDays(todayString(), 30), ruleName: "" });
+  onLoad(query: Record<string, string | undefined>) {
+    this.setData({
+      startDate: todayString(),
+      endDate: addDays(todayString(), 30),
+      ruleName: "",
+      editingId: query.ruleId ?? "",
+    });
     this.load();
   },
 
@@ -35,12 +44,35 @@ Page({
     this.setData({ loading: true, error: false });
     try {
       const templates = await api.shiftTemplates(true);
-      this.setData({
+      const patch: Record<string, unknown> = {
         templates,
         templateNames: templates.map((t) => t.name),
         sequence: [],
         loading: false,
-      });
+      };
+      if (this.data.editingId) {
+        const rules = await api.listRules();
+        const rule = rules.find((r) => r.id === this.data.editingId);
+        if (rule) {
+          const sequence = rule.sequence.map((item) => {
+            const idx = templates.findIndex((t) => t.id === item.shiftTemplateId);
+            return {
+              templateId: item.shiftTemplateId,
+              templateIndex: Math.max(0, idx),
+              name: templates[idx]?.name ?? "",
+            };
+          });
+          patch.ruleName = rule.name;
+          patch.startDate = rule.startDate;
+          patch.endDate = rule.endDate ?? addDays(rule.startDate, 30);
+          patch.endStrategy = rule.endDate ? "endDate" : "open";
+          patch.sequence = sequence;
+          patch.editingVersion = rule.version;
+          wx.setNavigationBarTitle({ title: "编辑排班表" });
+        }
+      }
+      this.setData(patch);
+      this.refreshPreview();
     } catch (err) {
       this.setData({ loading: false, error: true, errorMessage: (err as Error).message });
     }
@@ -110,7 +142,7 @@ Page({
   },
 
   async submit() {
-    const { sequence, startDate, endStrategy, endDate, ruleName } = this.data;
+    const { sequence, startDate, endStrategy, endDate, ruleName, editingId, editingVersion } = this.data;
     if (sequence.length === 0) {
       wx.showToast({ title: "请至少添加一个班次", icon: "none" });
       return;
@@ -131,17 +163,40 @@ Page({
     };
     this.setData({ submitting: true });
     try {
-      const result = await api.createRule(input);
-      wx.showToast({
-        title: `已生成 ${result.generatedCount} 天`,
-        icon: "success",
-      });
-      if (result.conflicts.length > 0) {
-        wx.showModal({
-          title: "存在排班冲突",
-          content: `检测到 ${result.conflicts.length} 处时间重叠，已生成的实例已保留，请到日历中检查。`,
-          showCancel: false,
+      if (editingId) {
+        await api.updateRule({
+          id: editingId,
+          version: editingVersion,
+          name: ruleName.trim() || undefined,
+          startDate,
+          endDate: endStrategy === "endDate" ? endDate : null,
+          sequence: sequence.map((s) => ({ shiftTemplateId: s.templateId })),
         });
+        invalidateRulesCache();
+        wx.showToast({ title: "排班表已更新", icon: "success" });
+      } else {
+        const result = await api.createRule(input);
+        invalidateRulesCache();
+        setActiveRuleCache({
+          id: result.rule.id,
+          name: result.rule.name ?? "排班表",
+          startDate: result.rule.startDate,
+          endDate: result.rule.endDate ?? null,
+          timezone: result.rule.timezone,
+          sequence: result.rule.sequence,
+          generationHorizonDays: result.rule.generationHorizonDays ?? 90,
+          version: result.rule.version,
+          isActive: true,
+          isCurrent: true,
+        });
+        wx.showToast({ title: `已创建排班表`, icon: "success" });
+        if (result.conflicts.length > 0) {
+          wx.showModal({
+            title: "存在排班冲突",
+            content: `检测到 ${result.conflicts.length} 处时间重叠，请到日历中检查。`,
+            showCancel: false,
+          });
+        }
       }
       setTimeout(() => wx.navigateBack({ delta: 1 }), 800);
     } catch (err) {

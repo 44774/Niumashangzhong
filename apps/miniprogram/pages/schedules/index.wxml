@@ -27,6 +27,7 @@
       <text class="rule-desc">序列 {{item.sequence.length}} 项 · {{item.endDate ? '至 ' + item.endDate : '长期循环'}}</text>
       <view class="row rule-actions">
         <button class="btn-secondary rule-btn" wx:if="{{!item.isCurrent}}" data-id="{{item.id}}" bindtap="switchRule">设为当前</button>
+        <button class="btn-secondary rule-btn" data-id="{{item.id}}" bindtap="editSchedule">编辑</button>
         <button class="btn-secondary rule-btn danger" data-id="{{item.id}}" data-name="{{item.name}}" bindtap="removeRule">删除</button>
       </view>
     </view>

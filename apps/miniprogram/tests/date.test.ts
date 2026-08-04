@@ -3,8 +3,10 @@ import {
   addDays,
   buildMonthGrid,
   formatDateCN,
+  monthRange,
   rangeDays,
   thisMonthRange,
+  threeMonthRange,
   todayString,
   weekdayCN,
 } from "../utils/date";
@@ -49,5 +51,13 @@ describe("日期工具", () => {
 
   it("todayString 返回 YYYY-MM-DD", () => {
     expect(todayString()).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+
+  it("月范围与三个月窗口", () => {
+    expect(monthRange(2026, 2)).toEqual({ start: "2026-02-01", end: "2026-02-28" });
+    expect(monthRange(2026, 12).end).toBe("2026-12-31");
+    expect(threeMonthRange(2026, 8)).toEqual({ from: "2026-07-01", to: "2026-09-30" });
+    expect(threeMonthRange(2026, 1).from).toBe("2025-12-01");
+    expect(threeMonthRange(2026, 12).to).toBe("2027-01-31");
   });
 });

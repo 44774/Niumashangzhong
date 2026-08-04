@@ -7,7 +7,7 @@
     </view>
     <view class="row">
       <button class="today-btn" bindtap="goSchedules">排班表</button>
-      <button class="today-btn" bindtap="goToday">今天</button>
+      <button class="today-btn primary" bindtap="goToday">回到今天</button>
     </view>
   </view>
 

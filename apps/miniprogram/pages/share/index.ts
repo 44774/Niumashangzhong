@@ -16,10 +16,12 @@ import {
   posterHeight,
   type CalendarGridCell,
 } from "../../utils/poster";
-import { isMultiDay, needsLongRangeWarning } from "../../utils/share-range";
+import { needsLongRangeWarning } from "../../utils/share-range";
 import { ensureHolidayRange } from "../../services/holiday-cache";
 import { isOvertime } from "../../utils/holiday";
 import { loadRange } from "../../services/schedule-view";
+import { getWeatherCached } from "../../services/weather-cache";
+import { rangeDaysCount } from "../../utils/share-range";
 
 const PRIVACY_KEY = "wc_share_privacy";
 
@@ -61,7 +63,8 @@ Page({
     privacy: defaultPrivacy(),
     previewEntries: [] as ReturnType<typeof buildPreviewEntries>,
     previewGrid: [] as CalendarGridCell[],
-    isMultiDay: false,
+    dayCount: 1,
+    useGrid: false,
     customStart: "",
     customEnd: "",
     loading: true,
@@ -107,7 +110,7 @@ Page({
       const { rangeStart, rangeEnd } = this.data;
       const [schedules, weatherList, holidayMap] = await Promise.all([
         loadRange(rangeStart, rangeEnd),
-        api.weather(rangeStart, rangeEnd),
+        getWeatherCached(rangeStart, rangeEnd),
         ensureHolidayRange(rangeStart, rangeEnd),
       ]);
       const previewEntries = buildPreviewEntries(schedules, weatherList, this.data.privacy).map(
@@ -121,14 +124,14 @@ Page({
           };
         },
       );
-      const multi = isMultiDay(rangeStart, rangeEnd);
+      const dayCount = rangeDaysCount(rangeStart, rangeEnd);
+      const useGrid = dayCount > 2;
       this.setData({
         weatherList,
         previewEntries,
-        previewGrid: multi
-          ? buildCalendarGrid(rangeStart, rangeEnd, previewEntries)
-          : [],
-        isMultiDay: multi,
+        previewGrid: useGrid ? buildCalendarGrid(rangeStart, rangeEnd, previewEntries) : [],
+        dayCount,
+        useGrid,
         loading: false,
       });
     } catch (err) {
@@ -236,8 +239,8 @@ Page({
         privacyOptions: this.data.privacy,
         entries,
       });
-      const multi = isMultiDay(this.data.rangeStart, this.data.rangeEnd);
-      const height = multi
+      const grid = this.data.useGrid;
+      const height = grid
         ? calendarPosterHeight(snapshot.rangeStart, snapshot.rangeEnd)
         : posterHeight(snapshot);
       this.setData({
@@ -245,7 +248,7 @@ Page({
         canvasHeight: Math.min(900, height * 0.6),
         generating: false,
       });
-      const draw = multi ? drawCalendarPoster : drawPoster;
+      const draw = grid ? drawCalendarPoster : drawPoster;
       draw(snapshot, (err, path) => {
         if (err) {
           wx.showToast({ title: err.message, icon: "none" });

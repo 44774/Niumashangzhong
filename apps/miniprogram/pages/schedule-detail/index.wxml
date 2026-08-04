@@ -54,5 +54,14 @@
         <text class="history-time">{{item.createdAtText}}</text>
       </view>
     </view>
+
+    <view class="card" wx:if="{{changeRecords.length > 0}}">
+      <text class="title-card">当日改班记录</text>
+      <view wx:for="{{changeRecords}}" wx:key="id" class="history-row">
+        <text class="history-version">改</text>
+        <text class="history-text">{{item.originalSnapshot.name}} → {{item.requestedSnapshot.name}}</text>
+        <text class="history-time">{{item.createdAtText}}</text>
+      </view>
+    </view>
   </block>
 </view>

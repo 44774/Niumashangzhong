@@ -33,6 +33,12 @@
   border: none;
 }
 
+.today-btn.primary {
+  background: var(--wc-color-brand-primary);
+  color: var(--wc-color-text-inverse);
+  font-weight: 600;
+}
+
 .month-bar .row {
   gap: 12rpx;
 }

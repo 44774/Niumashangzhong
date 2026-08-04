@@ -1,21 +1,24 @@
 <view class="page">
+  <view class="card month-bar">
+    <text class="month-arrow" data-delta="-1" bindtap="changeMonth">‹</text>
+    <text class="month-label">{{month}}</text>
+    <text class="month-arrow" data-delta="1" bindtap="changeMonth">›</text>
+  </view>
+
   <block wx:if="{{loading}}">
     <view class="loading-mask">加载中…</view>
   </block>
   <error-state wx:elif="{{error}}" message="{{errorMessage}}" bind:retry="load" />
   <empty-state
     wx:elif="{{records.length === 0}}"
-    title="还没有改班记录"
+    title="本月没有改班记录"
     desc="临时修改班次后会在这里留痕"
   />
   <view wx:else class="record-list">
     <view class="card record-card" wx:for="{{records}}" wx:key="id">
       <view class="row-between">
         <text class="record-status status-{{item.status}}">{{item.statusText}}</text>
-        <view class="row">
-          <text class="record-time">{{item.createdAtText}}</text>
-          <text class="record-delete" data-id="{{item.id}}" bindtap="removeRecord">删除</text>
-        </view>
+        <text class="record-time">{{item.createdAtText}}</text>
       </view>
       <view class="row record-change">
         <text class="record-old">{{item.originalSnapshot.name}}</text>
@@ -24,6 +27,8 @@
       </view>
       <text class="record-reason" wx:if="{{item.reason}}">原因：{{item.reason}}</text>
       <text class="record-note">个人模式直接生效，仅影响当天</text>
+      <button class="delete-btn" data-id="{{item.id}}" bindtap="removeRecord">删除记录</button>
     </view>
+    <button wx:if="{{hasMore}}" class="btn-secondary btn-block" bindtap="loadMore">加载更多</button>
   </view>
 </view>

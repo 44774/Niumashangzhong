@@ -1,6 +1,8 @@
 import { api } from "../../services/api";
 import { getToken } from "../../stores/session";
 import type { ChangeRequest } from "../../typings/api";
+import { monthRange, parseDate, todayString } from "../../utils/date";
+import { clearCalendarCache } from "../../services/calendar-cache";
 
 const STATUS_TEXT: Record<string, string> = {
   approved: "已生效",
@@ -10,9 +12,14 @@ const STATUS_TEXT: Record<string, string> = {
   expired: "已过期",
 };
 
+const pad = (n: number) => String(n).padStart(2, "0");
+
 Page({
   data: {
+    month: "",
     records: [] as Array<ChangeRequest & { statusText: string; createdAtText: string }>,
+    page: 1,
+    hasMore: false,
     loading: true,
     error: false,
     errorMessage: "",
@@ -23,23 +30,36 @@ Page({
       wx.reLaunch({ url: "/pages/login/index" });
       return;
     }
-    this.load();
+    const today = todayString();
+    const { year, month } = parseDate(today);
+    this.setData({ month: `${year}-${pad(month)}` });
+    this.load(true);
   },
 
-  async load() {
-    this.setData({ loading: true, error: false });
+  async load(reset: boolean) {
+    const [year, month] = this.data.month.split("-").map(Number);
+    const { start, end } = monthRange(year ?? new Date().getFullYear(), month ?? 1);
+    const page = reset ? 1 : this.data.page;
+    this.setData({
+      loading: reset ? this.data.records.length === 0 : false,
+      error: false,
+      page,
+    });
     try {
-      const list = await api.changeRequests();
+      const list = await api.changeRequestsInRange(start, end, page);
       const records = list.map((item) => {
         const d = new Date(item.createdAt);
-        const pad = (n: number) => String(n).padStart(2, "0");
         return {
           ...item,
           statusText: STATUS_TEXT[item.status] ?? item.status,
           createdAtText: `${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`,
         };
       });
-      this.setData({ records, loading: false });
+      this.setData({
+        records: reset ? records : [...this.data.records, ...records],
+        hasMore: records.length === 50,
+        loading: false,
+      });
     } catch (err) {
       this.setData({
         loading: false,
@@ -47,6 +67,27 @@ Page({
         errorMessage: (err as Error).message,
       });
     }
+  },
+
+  changeMonth(event: WechatMiniprogram.TouchEvent) {
+    const delta = Number(event.currentTarget.dataset.delta);
+    const [year, month] = this.data.month.split("-").map(Number);
+    let y = year ?? new Date().getFullYear();
+    let m = (month ?? 1) + delta;
+    if (m < 1) {
+      m = 12;
+      y -= 1;
+    } else if (m > 12) {
+      m = 1;
+      y += 1;
+    }
+    this.setData({ month: `${y}-${pad(m)}` });
+    this.load(true);
+  },
+
+  loadMore() {
+    this.setData({ page: this.data.page + 1 });
+    this.load(false);
   },
 
   removeRecord(event: WechatMiniprogram.TouchEvent) {
@@ -60,8 +101,9 @@ Page({
         if (!res.confirm) return;
         try {
           await api.removeChangeRequest(id);
+          clearCalendarCache();
           wx.showToast({ title: "已删除", icon: "success" });
-          this.load();
+          this.load(true);
         } catch (err) {
           wx.showToast({ title: (err as Error).message, icon: "none" });
         }
