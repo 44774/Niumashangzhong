@@ -15,3 +15,8 @@ api-smoke.log
 api-smoke.err
 work-calendar-codex-kit/
 artifacts/
+# 微信开发者工具误生成在仓库根目录的文件（真实配置在 apps/miniprogram/）
+/project.config.json
+/project.private.config.json
+/logo.png
+/CnfrOviDwl_*.png
