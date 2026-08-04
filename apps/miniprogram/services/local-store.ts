@@ -5,6 +5,7 @@ export const LOCAL_SCHEDULES_KEY = "wc_local_schedules";
 export const LOCAL_CHANGES_KEY = "wc_local_changes";
 export const LOCAL_PREFS_KEY = "wc_local_prefs";
 export const LOCAL_RULES_KEY = "wc_local_rules";
+export const LOCAL_ACTIVE_RULE_KEY = "wc_active_rule_id";
 
 export function read<T>(key: string, fallback: T): T {
   const value = wx.getStorageSync(key);

@@ -30,6 +30,9 @@ export const api = {
   updateSchedule: (id: string, input: Parameters<typeof cloudApi.updateSchedule>[1]) =>
     current().updateSchedule(id, input),
   createRule: (input: Parameters<typeof cloudApi.createRule>[0]) => current().createRule(input),
+  listRules: () => current().listRules(),
+  switchRule: (ruleId: string) => current().switchRule(ruleId),
+  removeRule: (ruleId: string) => current().removeRule(ruleId),
   createChangeRequest: (input: Parameters<typeof cloudApi.createChangeRequest>[0]) =>
     current().createChangeRequest(input),
   changeRequests: (status?: string) => current().changeRequests(status),

@@ -1,4 +1,5 @@
 import { api } from "../../services/api";
+import { getToken } from "../../stores/session";
 import type { ScheduleDetail } from "../../typings/api";
 import { formatDateCN, todayString, weekdayCN } from "../../utils/date";
 import { durationLabel, formatTimeRange } from "../../utils/format";
@@ -9,6 +10,7 @@ Page({
   data: {
     detail: null as ScheduleDetail | null,
     dateLabel: "",
+    date: "",
     timeText: "",
     duration: "",
     location: "",
@@ -25,10 +27,20 @@ Page({
     const id = query.id;
     const date = query.date ?? todayString();
     this.setData({
+      date,
       dateLabel: `${formatDateCN(date)} ${weekdayCN(date)}`,
     });
     this.setData({ instanceId: id ?? "" });
-    this.load();
+  },
+
+  onShow() {
+    if (!getToken()) {
+      wx.reLaunch({ url: "/pages/login/index" });
+      return;
+    }
+    if (this.data.instanceId || this.data.date) {
+      this.load();
+    }
   },
 
   async load() {
@@ -38,7 +50,7 @@ Page({
       if (this.data.instanceId) {
         detail = await api.scheduleDetail(this.data.instanceId);
       } else {
-        const date = this.data.dateLabel ? this.extractDate() : todayString();
+        const date = this.data.date || todayString();
         const list = await api.schedules(date, date);
         if (list.length === 0) {
           this.setData({ loading: false, detail: null });
@@ -79,7 +91,7 @@ Page({
   },
 
   extractDate(): string {
-    return this.data.detail?.businessDate ?? todayString();
+    return this.data.date || this.data.detail?.businessDate || todayString();
   },
 
   changeShift() {

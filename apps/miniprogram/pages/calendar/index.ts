@@ -143,8 +143,8 @@ Page({
     this.load();
   },
 
-  goCycle() {
-    wx.navigateTo({ url: "/pages/cycle-create/index" });
+  goSchedules() {
+    wx.navigateTo({ url: "/pages/schedules/index" });
   },
 
   onTouchStart(event: WechatMiniprogram.TouchEvent) {

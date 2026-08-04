@@ -247,6 +247,59 @@ paths:
                   conflicts:
                     type: array
                     items: {$ref: '#/components/schemas/ScheduleConflict'}
+    get:
+      tags: [Schedules]
+      summary: 列出当前用户的循环排班表
+      parameters:
+        - {$ref: '#/components/parameters/WorkspaceHeader'}
+      responses:
+        '200':
+          description: 排班表列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id: {type: string, format: uuid}
+                    name: {type: string}
+                    startDate: {type: string, format: date}
+                    endDate: {type: [string, 'null'], format: date}
+                    timezone: {type: string}
+                    isCurrent: {type: boolean}
+  /schedule-rules/{id}/activate:
+    post:
+      tags: [Schedules]
+      summary: 切换当前排班表
+      parameters:
+        - {$ref: '#/components/parameters/WorkspaceHeader'}
+        - {$ref: '#/components/parameters/ResourceId'}
+      responses:
+        '200':
+          description: 已切换
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ruleId: {type: string, format: uuid}
+  /schedule-rules/{id}:
+    delete:
+      tags: [Schedules]
+      summary: 删除排班表及其生成的排班
+      parameters:
+        - {$ref: '#/components/parameters/WorkspaceHeader'}
+        - {$ref: '#/components/parameters/ResourceId'}
+      responses:
+        '200':
+          description: 已删除
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  removed: {type: string, format: uuid}
   /schedule-batches/preview:
     post:
       tags: [Admin, Schedules]

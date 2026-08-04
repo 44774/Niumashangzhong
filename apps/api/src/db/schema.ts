@@ -76,6 +76,7 @@ export const users = pgTable(
     timezone: varchar("timezone", { length: 64 }).notNull().default("Asia/Shanghai"),
     weekStartsOn: smallint("week_starts_on").notNull().default(1),
     defaultCity: varchar("default_city", { length: 120 }),
+    activeRuleId: uuid("active_rule_id"),
     status: varchar("status", { length: 24 }).notNull().default("active"),
     createdAt: timestamp("created_at", { withTimezone: true, mode: "date" }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" }).notNull().defaultNow(),

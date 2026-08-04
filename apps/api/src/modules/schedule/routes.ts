@@ -71,7 +71,12 @@ export async function scheduleRoutes(
           ),
         )
         .orderBy(scheduleInstances.businessDate);
-      return rows.map(toScheduleInstance);
+      const userRow = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+      const activeRuleId = userRow[0]?.activeRuleId ?? null;
+      const visible = activeRuleId
+        ? rows.filter((r) => r.sourceRuleId === activeRuleId || r.source !== "rule")
+        : rows;
+      return visible.map(toScheduleInstance);
     },
   );
 
@@ -271,12 +276,13 @@ export async function scheduleRoutes(
         sequence: templateIds,
         generationHorizonDays: horizon,
       });
+      const ruleName = body.name?.trim() || "排班表";
       const insertedRule = await db
         .insert(scheduleRules)
         .values({
           workspaceId: ws.workspaceId,
           ownerUserId: userId,
-          name: body.name ?? null,
+          name: ruleName,
           startDate: body.startDate,
           endDate: body.endDate ?? null,
           sequence: body.sequence,
@@ -287,6 +293,7 @@ export async function scheduleRoutes(
         .returning();
       const ruleRow = insertedRule[0];
       if (!ruleRow) throw validationError("循环规则创建失败");
+      await db.update(users).set({ activeRuleId: ruleRow.id }).where(eq(users.id, userId));
 
       let generatedCount = 0;
       const conflicts: ScheduleRuleCreateResult["conflicts"] = [];
@@ -299,6 +306,7 @@ export async function scheduleRoutes(
             eq(scheduleInstances.ownerUserId, userId),
             gte(scheduleInstances.businessDate, slots[0]?.date ?? body.startDate),
             lte(scheduleInstances.businessDate, slots[slots.length - 1]?.date ?? body.startDate),
+            eq(scheduleInstances.source, "manual"),
             isNull(scheduleInstances.deletedAt),
           ),
         );
@@ -386,6 +394,100 @@ export async function scheduleRoutes(
         generatedCount,
         conflicts,
       } satisfies ScheduleRuleCreateResult);
+    },
+  );
+
+  app.get(
+    "/schedule-rules",
+    { schema: { tags: ["Schedules"] } },
+    async (req) => {
+      const userId = await requireAuth(req);
+      const ws = await requireWorkspace(req, db);
+      const rows = await db
+        .select()
+        .from(scheduleRules)
+        .where(
+          and(
+            eq(scheduleRules.workspaceId, ws.workspaceId),
+            eq(scheduleRules.ownerUserId, userId),
+            eq(scheduleRules.isActive, true),
+            isNull(scheduleRules.deletedAt),
+          ),
+        )
+        .orderBy(scheduleRules.createdAt);
+      const userRow = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+      const active = userRow[0]?.activeRuleId ?? null;
+      return rows.map((r) => ({
+        id: r.id,
+        name: r.name ?? "未命名排班表",
+        startDate: r.startDate,
+        endDate: r.endDate,
+        timezone: r.timezone,
+        sequence: r.sequence,
+        generationHorizonDays: r.generationHorizonDays,
+        version: r.version,
+        isActive: r.isActive,
+        isCurrent: r.id === active,
+      }));
+    },
+  );
+
+  app.post<{ Params: { id: string } }>(
+    "/schedule-rules/:id/activate",
+    { schema: { tags: ["Schedules"] } },
+    async (req) => {
+      const userId = await requireAuth(req);
+      const ws = await requireWorkspace(req, db);
+      const rows = await db
+        .select()
+        .from(scheduleRules)
+        .where(
+          and(
+            eq(scheduleRules.id, req.params.id),
+            eq(scheduleRules.workspaceId, ws.workspaceId),
+            eq(scheduleRules.ownerUserId, userId),
+            isNull(scheduleRules.deletedAt),
+          ),
+        )
+        .limit(1);
+      if (rows.length === 0) throw notFound("排班表不存在");
+      await db.update(users).set({ activeRuleId: req.params.id }).where(eq(users.id, userId));
+      return { ruleId: req.params.id };
+    },
+  );
+
+  app.delete<{ Params: { id: string } }>(
+    "/schedule-rules/:id",
+    { schema: { tags: ["Schedules"] } },
+    async (req) => {
+      const userId = await requireAuth(req);
+      const ws = await requireWorkspace(req, db);
+      const rows = await db
+        .select()
+        .from(scheduleRules)
+        .where(
+          and(
+            eq(scheduleRules.id, req.params.id),
+            eq(scheduleRules.workspaceId, ws.workspaceId),
+            eq(scheduleRules.ownerUserId, userId),
+            isNull(scheduleRules.deletedAt),
+          ),
+        )
+        .limit(1);
+      if (rows.length === 0) throw notFound("排班表不存在");
+      await db
+        .update(scheduleRules)
+        .set({ isActive: false, deletedAt: new Date() })
+        .where(eq(scheduleRules.id, req.params.id));
+      await db
+        .update(scheduleInstances)
+        .set({ deletedAt: new Date() })
+        .where(eq(scheduleInstances.sourceRuleId, req.params.id));
+      const userRow = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+      if (userRow[0]?.activeRuleId === req.params.id) {
+        await db.update(users).set({ activeRuleId: null }).where(eq(users.id, userId));
+      }
+      return { removed: req.params.id };
     },
   );
 }

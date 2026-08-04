@@ -1,0 +1,36 @@
+<view class="page">
+  <view class="row-between head">
+    <text class="title-md">我的排班表</text>
+    <button class="btn-secondary add-btn" bindtap="createSchedule">新建排班表</button>
+  </view>
+
+  <block wx:if="{{loading}}">
+    <view class="loading-mask">加载中…</view>
+  </block>
+  <error-state wx:elif="{{error}}" message="{{errorMessage}}" bind:retry="load" />
+  <empty-state
+    wx:elif="{{rules.length === 0}}"
+    title="还没有循环排班表"
+    desc="创建排班表后，日历会按序列持续自动排班"
+    action-text="新建排班表"
+    bind:action="createSchedule"
+  />
+  <view wx:else class="rule-list">
+    <view class="card rule-card {{item.isCurrent ? 'current' : ''}}" wx:for="{{rules}}" wx:key="id">
+      <view class="row-between">
+        <view class="row">
+          <text class="rule-name">{{item.name}}</text>
+          <text class="current-tag" wx:if="{{item.isCurrent}}">当前</text>
+        </view>
+        <text class="text-tertiary">{{item.startDate}} 起</text>
+      </view>
+      <text class="rule-desc">序列 {{item.sequence.length}} 项 · {{item.endDate ? '至 ' + item.endDate : '长期循环'}}</text>
+      <view class="row rule-actions">
+        <button class="btn-secondary rule-btn" wx:if="{{!item.isCurrent}}" data-id="{{item.id}}" bindtap="switchRule">设为当前</button>
+        <button class="btn-secondary rule-btn danger" data-id="{{item.id}}" data-name="{{item.name}}" bindtap="removeRule">删除</button>
+      </view>
+    </view>
+  </view>
+
+  <text class="rule-hint">手动添加的单日排班始终显示；切换排班表后，日历只显示该排班表生成的班次与手动排班。</text>
+</view>

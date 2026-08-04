@@ -6,6 +6,8 @@
   <block wx:else>
     <view class="card">
       <text class="title-card">循环规则</text>
+      <text class="field-label name-label">排班表名称</text>
+      <input class="field-input" value="{{ruleName}}" bindinput="onNameInput" placeholder="例如：早夜循环" maxlength="20" />
       <text class="field-label start-label">起始日期</text>
       <picker mode="date" value="{{startDate}}" bindchange="onStartDateChange">
         <view class="picker-box">{{startDate}}</view>

@@ -12,7 +12,8 @@
     "pages/change-records/index",
     "pages/share-settings/index",
     "pages/cycle-create/index",
-    "pages/location/index"
+    "pages/location/index",
+    "pages/schedules/index"
   ],
   "requiredPrivateInfos": ["getLocation", "chooseLocation"],
   "permission": {

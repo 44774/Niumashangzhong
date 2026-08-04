@@ -28,6 +28,7 @@ import {
   LOCAL_CHANGES_KEY,
   LOCAL_PREFS_KEY,
   LOCAL_RULES_KEY,
+  LOCAL_ACTIVE_RULE_KEY,
   LOCAL_SCHEDULES_KEY,
   LOCAL_TEMPLATES_KEY,
   genId,
@@ -51,6 +52,7 @@ const HOLIDAY_API = "https://timor.tech/api/holiday/year/";
 
 interface LocalRule {
   id: string;
+  name: string;
   startDate: string;
   endDate: string | null;
   sequence: Array<{ shiftTemplateId: string }>;
@@ -62,6 +64,7 @@ interface LocalRule {
 const LOCAL_WORKSPACE_ID = "local-workspace";
 
 interface LocalInstance extends ScheduleInstance {
+  sourceRuleId?: string | null;
   history: Array<{
     version: number;
     snapshot: any;
@@ -196,7 +199,11 @@ export const api = {
   async schedules(from: string, to: string): Promise<ScheduleInstance[]> {
     await extendLocalRules(to);
     const docs = read<LocalInstance[]>(LOCAL_SCHEDULES_KEY, []);
-    return docs
+    const activeRuleId = read<string>(LOCAL_ACTIVE_RULE_KEY, "");
+    const visible = activeRuleId
+      ? docs.filter((d) => d.sourceRuleId === activeRuleId || d.source !== "rule")
+      : docs;
+    return visible
       .filter((d) => d.businessDate >= from && d.businessDate <= to)
       .sort((a, b) => (a.businessDate < b.businessDate ? -1 : 1))
       .map(toInstance);
@@ -314,12 +321,16 @@ export const api = {
     const docs = read<LocalInstance[]>(LOCAL_SCHEDULES_KEY, []);
     const horizon = Math.min(366, Math.max(7, input.generationHorizonDays ?? 90));
     const slots = cycleSlots(input.startDate, input.sequence.map((s) => s.shiftTemplateId), horizon);
-    const occupied = new Set(docs.map((d) => d.businessDate));
+    const occupied = new Set(
+      docs.filter((d) => d.source === "manual").map((d) => d.businessDate),
+    );
     const now = new Date().toISOString();
     const ruleId = genId("r");
+    const ruleName = input.name?.trim() || "排班表";
     const rules = read<LocalRule[]>(LOCAL_RULES_KEY, []);
     rules.push({
       id: ruleId,
+      name: ruleName,
       startDate: input.startDate,
       endDate: input.endDate ?? null,
       sequence: input.sequence,
@@ -328,6 +339,7 @@ export const api = {
       version: 1,
     });
     write(LOCAL_RULES_KEY, rules);
+    write(LOCAL_ACTIVE_RULE_KEY, ruleId);
     let generatedCount = 0;
     for (const slot of slots) {
       if (occupied.has(slot.date)) continue;
@@ -361,7 +373,7 @@ export const api = {
       rule: {
         id: ruleId,
         ownerUserId: "local-user",
-        name: input.name ?? null,
+        name: ruleName,
         startDate: input.startDate,
         endDate: input.endDate ?? null,
         timezone: "Asia/Shanghai",
@@ -373,6 +385,53 @@ export const api = {
       generatedCount,
       conflicts: [],
     };
+  },
+
+  async listRules() {
+    const activeRuleId = read<string>(LOCAL_ACTIVE_RULE_KEY, "");
+    return read<LocalRule[]>(LOCAL_RULES_KEY, [])
+      .filter((r) => r.isActive)
+      .map((r) => ({
+        id: r.id,
+        name: r.name ?? "未命名排班表",
+        startDate: r.startDate,
+        endDate: r.endDate ?? null,
+        timezone: r.timezone,
+        sequence: r.sequence,
+        generationHorizonDays: 90,
+        version: r.version,
+        isActive: r.isActive,
+        isCurrent: r.id === activeRuleId,
+      }));
+  },
+
+  async switchRule(ruleId: string) {
+    const rules = read<LocalRule[]>(LOCAL_RULES_KEY, []);
+    if (!rules.some((r) => r.id === ruleId && r.isActive)) {
+      throw new ApiError(404, "NOT_FOUND", "排班表不存在");
+    }
+    write(LOCAL_ACTIVE_RULE_KEY, ruleId);
+    return { ruleId };
+  },
+
+  async removeRule(ruleId: string) {
+    const rules = read<LocalRule[]>(LOCAL_RULES_KEY, []);
+    if (!rules.some((r) => r.id === ruleId)) {
+      throw new ApiError(404, "NOT_FOUND", "排班表不存在");
+    }
+    write(
+      LOCAL_RULES_KEY,
+      rules.map((r) => (r.id === ruleId ? { ...r, isActive: false } : r)),
+    );
+    const docs = read<LocalInstance[]>(LOCAL_SCHEDULES_KEY, []);
+    write(
+      LOCAL_SCHEDULES_KEY,
+      docs.filter((d) => d.sourceRuleId !== ruleId),
+    );
+    if (read<string>(LOCAL_ACTIVE_RULE_KEY, "") === ruleId) {
+      write(LOCAL_ACTIVE_RULE_KEY, "");
+    }
+    return { removed: ruleId };
   },
 
   async createChangeRequest(input: ChangeRequestInput): Promise<ChangeRequest> {
@@ -603,7 +662,11 @@ async function extendLocalRules(upToDate: string): Promise<void> {
       rule.sequence.map((s) => s.shiftTemplateId),
       Math.min(days, 400),
     );
-    const occupied = new Set(docs.map((d) => d.businessDate));
+    const occupied = new Set(
+      docs
+        .filter((d) => d.source === "manual" || d.sourceRuleId === rule.id)
+        .map((d) => d.businessDate),
+    );
     for (const slot of slots) {
       if (occupied.has(slot.date)) continue;
       const tpl = templates.find((t) => t.id === slot.shiftTemplateId);

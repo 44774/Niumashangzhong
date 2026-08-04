@@ -1,0 +1,59 @@
+.head {
+  margin-bottom: 24rpx;
+}
+
+.add-btn {
+  height: 68rpx;
+  line-height: 68rpx;
+  font-size: 26rpx;
+  padding: 0 24rpx;
+}
+
+.rule-card.current {
+  border: 2rpx solid var(--wc-color-brand-primary);
+}
+
+.rule-name {
+  font-size: 32rpx;
+  font-weight: 700;
+}
+
+.current-tag {
+  background: var(--wc-color-brand-primary);
+  color: var(--wc-color-text-inverse);
+  font-size: 22rpx;
+  border-radius: var(--wc-radius-pill);
+  padding: 4rpx 16rpx;
+  margin-left: 12rpx;
+}
+
+.rule-desc {
+  display: block;
+  color: var(--wc-color-text-secondary);
+  font-size: 26rpx;
+  margin-top: 8rpx;
+}
+
+.rule-actions {
+  gap: 16rpx;
+  margin-top: 20rpx;
+}
+
+.rule-btn {
+  height: 64rpx;
+  line-height: 64rpx;
+  font-size: 26rpx;
+  padding: 0 24rpx;
+}
+
+.rule-btn.danger {
+  color: var(--wc-color-semantic-danger);
+}
+
+.rule-hint {
+  display: block;
+  color: var(--wc-color-text-tertiary);
+  font-size: 22rpx;
+  line-height: 1.6;
+  margin-top: 20rpx;
+}

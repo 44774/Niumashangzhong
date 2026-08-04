@@ -232,6 +232,11 @@ export function drawCalendarPoster(
         const y = HEADER_H + WEEKDAY_H + row * CELL_H;
         if (!cell.inRange) return;
 
+        // 浅色外框，让日期与班次对应更清晰
+        ctx.strokeStyle = "#E4ECF5";
+        ctx.lineWidth = 2;
+        ctx.strokeRect(x, y, CELL_W, CELL_H);
+
         // 日期数字
         ctx.fillStyle = "#14213D";
         ctx.font = "bold 30px sans-serif";

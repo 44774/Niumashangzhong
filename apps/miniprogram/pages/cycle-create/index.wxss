@@ -2,6 +2,10 @@
   margin-top: 20rpx;
 }
 
+.name-label {
+  margin-top: 20rpx;
+}
+
 .picker-box {
   background: var(--wc-color-surface-subtle);
   border-radius: var(--wc-radius-md);

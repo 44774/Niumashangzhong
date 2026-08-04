@@ -52,6 +52,10 @@ Page({
     wx.navigateTo({ url: "/pages/location/index" });
   },
 
+  goSchedules() {
+    wx.navigateTo({ url: "/pages/schedules/index" });
+  },
+
   showAbout() {
     wx.showModal({
       title: "关于工作日历",

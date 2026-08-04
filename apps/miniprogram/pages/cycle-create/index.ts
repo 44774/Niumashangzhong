@@ -12,6 +12,7 @@ Page({
     templates: [] as ShiftTemplate[],
     templateNames: [] as string[],
     sequence: [] as Array<{ templateId: string; templateIndex: number; name: string }>,
+    ruleName: "",
     startDate: "",
     endStrategy: "open" as "open" | "endDate",
     endDate: "",
@@ -20,7 +21,7 @@ Page({
   },
 
   onLoad() {
-    this.setData({ startDate: todayString(), endDate: addDays(todayString(), 30) });
+    this.setData({ startDate: todayString(), endDate: addDays(todayString(), 30), ruleName: "" });
     this.load();
   },
 
@@ -78,6 +79,10 @@ Page({
     this.refreshPreview();
   },
 
+  onNameInput(event: WechatMiniprogram.Input) {
+    this.setData({ ruleName: event.detail.value });
+  },
+
   onEndDateChange(event: WechatMiniprogram.PickerChange) {
     this.setData({ endDate: String(event.detail.value) });
   },
@@ -105,7 +110,7 @@ Page({
   },
 
   async submit() {
-    const { sequence, startDate, endStrategy, endDate } = this.data;
+    const { sequence, startDate, endStrategy, endDate, ruleName } = this.data;
     if (sequence.length === 0) {
       wx.showToast({ title: "请至少添加一个班次", icon: "none" });
       return;
@@ -117,6 +122,7 @@ Page({
     const horizon = 90;
     const input: ScheduleRuleInput = {
       ownerUserId: "",
+      name: ruleName.trim() || undefined,
       startDate,
       endDate: endStrategy === "endDate" ? endDate : null,
       timezone: "Asia/Shanghai",

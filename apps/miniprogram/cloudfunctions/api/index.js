@@ -985,6 +985,7 @@ async function chunkAll(tasks, size) {
   }
 }
 async function list2(openid, payload) {
+  var _a;
   await requireWorkspace(openid, payload.workspaceId);
   assertDate(payload.from);
   assertDate(payload.to);
@@ -997,7 +998,12 @@ async function list2(openid, payload) {
     ownerOpenid: openid,
     businessDate: _.gte(payload.from).and(_.lte(payload.to))
   }).orderBy("businessDate", "asc").limit(1e3).get();
-  return res.data.map(toScheduleInstance);
+  const userRes = await db.collection("users").doc(openid).get();
+  const activeRuleId = (_a = userRes.data) == null ? void 0 : _a.activeRuleId;
+  const visible = activeRuleId ? res.data.filter(
+    (r) => r.sourceRuleId === activeRuleId || r.source !== "rule"
+  ) : res.data;
+  return visible.map(toScheduleInstance);
 }
 function diffDays(from, to) {
   const [fy, fm, fd] = from.split("-").map(Number);
@@ -1025,11 +1031,16 @@ async function extendRules(openid, workspaceId, upToDate) {
     const ids = Array.from(new Set(slots.map((s) => s.shiftTemplateId)));
     const tplRes = await db.collection("shiftTemplates").where({ workspaceId, _id: _.in(ids) }).limit(100).get();
     const tplMap = new Map(tplRes.data.map((t) => [t._id, t]));
-    const existingRes = await db.collection("scheduleInstances").where({
-      workspaceId,
-      ownerOpenid: openid,
-      businessDate: _.gte(rule.startDate).and(_.lte(end))
-    }).limit(1e3).get();
+    const existingRes = await db.collection("scheduleInstances").where(
+      _.and([
+        {
+          workspaceId,
+          ownerOpenid: openid,
+          businessDate: _.gte(rule.startDate).and(_.lte(end))
+        },
+        _.or([{ sourceRuleId: rule._id }, { source: "manual" }])
+      ])
+    ).limit(1e3).get();
     const occupied = new Set(existingRes.data.map((r) => r.businessDate));
     const now = nowIso();
     const inserts = [];
@@ -1184,7 +1195,7 @@ async function update2(openid, payload) {
   return toScheduleInstance(updated);
 }
 async function createRule(openid, payload) {
-  var _a, _b;
+  var _a, _b, _c;
   await requireWorkspace(openid, payload.workspaceId);
   assert(
     payload.startDate && Array.isArray(payload.sequence) && payload.sequence.length > 0,
@@ -1209,11 +1220,12 @@ async function createRule(openid, payload) {
   const workspace = await getWorkspace(payload.workspaceId);
   const timezone = payload.timezone ?? workspace.timezone;
   const now = nowIso();
+  const ruleName = ((_a = payload.name) == null ? void 0 : _a.trim()) || "\u6392\u73ED\u8868";
   const added = await db.collection("scheduleRules").add({
     data: {
       workspaceId: payload.workspaceId,
       ownerOpenid: openid,
-      name: payload.name ?? null,
+      name: ruleName,
       startDate: payload.startDate,
       endDate: payload.endDate ?? null,
       sequence: payload.sequence,
@@ -1226,12 +1238,16 @@ async function createRule(openid, payload) {
     }
   });
   const ruleId = added._id;
-  const from = ((_a = slots[0]) == null ? void 0 : _a.date) ?? payload.startDate;
-  const to = ((_b = slots[slots.length - 1]) == null ? void 0 : _b.date) ?? payload.startDate;
+  await db.collection("users").doc(openid).update({
+    data: { activeRuleId: ruleId, updatedAt: now }
+  });
+  const from = ((_b = slots[0]) == null ? void 0 : _b.date) ?? payload.startDate;
+  const to = ((_c = slots[slots.length - 1]) == null ? void 0 : _c.date) ?? payload.startDate;
   const existingRes = await db.collection("scheduleInstances").where({
     workspaceId: payload.workspaceId,
     ownerOpenid: openid,
-    businessDate: _.gte(from).and(_.lte(to))
+    businessDate: _.gte(from).and(_.lte(to)),
+    source: "manual"
   }).limit(1e3).get();
   const occupied = new Set(existingRes.data.map((r) => r.businessDate));
   let generatedCount = 0;
@@ -1274,9 +1290,12 @@ async function createRule(openid, payload) {
     ownerOpenid: openid,
     businessDate: _.gte(from).and(_.lte(to))
   }).limit(1e3).get();
+  const relevant = allRes.data.filter(
+    (r) => r.source !== "rule" || r.sourceRuleId === ruleId
+  );
   const conflicts = [];
-  for (const a of allRes.data) {
-    for (const b of allRes.data) {
+  for (const a of relevant) {
+    for (const b of relevant) {
       if (a._id === b._id) continue;
       if (intervalsOverlap(
         { id: a._id, startsAt: a.startsAt ?? null, endsAt: a.endsAt ?? null, kind: a.kind },
@@ -1299,7 +1318,7 @@ async function createRule(openid, payload) {
     rule: {
       id: ruleId,
       ownerUserId: openid,
-      name: payload.name ?? null,
+      name: ruleName,
       startDate: payload.startDate,
       endDate: payload.endDate ?? null,
       timezone,
@@ -1311,6 +1330,55 @@ async function createRule(openid, payload) {
     generatedCount,
     conflicts
   };
+}
+async function listRules(openid, workspaceId) {
+  var _a;
+  await requireWorkspace(openid, workspaceId);
+  const rulesRes = await db.collection("scheduleRules").where({ workspaceId, ownerOpenid: openid, isActive: true }).orderBy("createdAt", "asc").limit(100).get();
+  const userRes = await db.collection("users").doc(openid).get();
+  const active = (_a = userRes.data) == null ? void 0 : _a.activeRuleId;
+  return rulesRes.data.map((r) => ({
+    id: r._id,
+    name: r.name ?? "\u672A\u547D\u540D\u6392\u73ED\u8868",
+    startDate: r.startDate,
+    endDate: r.endDate ?? null,
+    timezone: r.timezone,
+    sequence: r.sequence,
+    generationHorizonDays: r.generationHorizonDays,
+    version: r.version,
+    isActive: r.isActive,
+    isCurrent: r._id === active
+  }));
+}
+async function switchRule(openid, workspaceId, ruleId) {
+  await requireWorkspace(openid, workspaceId);
+  const rule = await db.collection("scheduleRules").doc(ruleId).get();
+  if (!rule.data || rule.data.workspaceId !== workspaceId || rule.data.ownerOpenid !== openid) {
+    throw new CloudError("NOT_FOUND", "\u6392\u73ED\u8868\u4E0D\u5B58\u5728", 404);
+  }
+  await db.collection("users").doc(openid).update({
+    data: { activeRuleId: ruleId, updatedAt: nowIso() }
+  });
+  return { ruleId };
+}
+async function removeRule(openid, workspaceId, ruleId) {
+  var _a;
+  await requireWorkspace(openid, workspaceId);
+  const rule = await db.collection("scheduleRules").doc(ruleId).get();
+  if (!rule.data || rule.data.workspaceId !== workspaceId || rule.data.ownerOpenid !== openid) {
+    throw new CloudError("NOT_FOUND", "\u6392\u73ED\u8868\u4E0D\u5B58\u5728", 404);
+  }
+  await db.collection("scheduleRules").doc(ruleId).update({
+    data: { isActive: false, updatedAt: nowIso() }
+  });
+  await db.collection("scheduleInstances").where({ sourceRuleId: ruleId }).remove();
+  const userRes = await db.collection("users").doc(openid).get();
+  if (((_a = userRes.data) == null ? void 0 : _a.activeRuleId) === ruleId) {
+    await db.collection("users").doc(openid).update({
+      data: { activeRuleId: null, updatedAt: nowIso() }
+    });
+  }
+  return { removed: ruleId };
 }
 
 // apps/miniprogram/cloudfunctions/api/src/change.ts
@@ -1572,6 +1640,12 @@ exports.main = async (event) => {
         return ok(await update2(openid, payload));
       case "rule.create":
         return ok(await createRule(openid, payload));
+      case "rule.list":
+        return ok(await listRules(openid, payload.workspaceId));
+      case "rule.switch":
+        return ok(await switchRule(openid, payload.workspaceId, payload.ruleId));
+      case "rule.remove":
+        return ok(await removeRule(openid, payload.workspaceId, payload.ruleId));
       case "change.create":
         return ok(await create3(openid, payload));
       case "change.list":

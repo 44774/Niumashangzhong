@@ -69,6 +69,19 @@ await miniProgram.evaluate(
             to: "2026-11-12",
           })
         : null;
+      const ruleList = rule && rule.ok ? await call("rule.list", { workspaceId }) : null;
+      const targetRule =
+        ruleList && ruleList.ok && ruleList.data.length > 0 ? ruleList.data[0] : null;
+      const switched =
+        targetRule && !targetRule.isCurrent
+          ? await call("rule.switch", { workspaceId, ruleId: targetRule.id })
+          : targetRule
+            ? { ok: true, already: true }
+            : null;
+      const removed =
+        switched && switched.ok
+          ? await call("rule.remove", { workspaceId, ruleId: targetRule.id })
+          : null;
       let created = null;
       if (tpl) {
         created = await call("schedule.create", {
@@ -96,7 +109,20 @@ await miniProgram.evaluate(
               },
             })
           : null;
-      store({ auth, holidaySync, holidayRange, weather, created, share, rule, farList, workspaceId });
+      store({
+        auth,
+        holidaySync,
+        holidayRange,
+        weather,
+        created,
+        share,
+        rule,
+        farList,
+        ruleList,
+        switched,
+        removed,
+        workspaceId,
+      });
     })();
     return "started";
   },
@@ -119,6 +145,10 @@ const shareOvertime =
 const rollingRule =
   result?.rule && result.rule.ok && result.farList && result.farList.ok &&
   Array.isArray(result.farList.data) && result.farList.data.length > 0;
+const ruleManagement =
+  result?.ruleList && result.ruleList.ok && result.ruleList.data.length > 0 &&
+  result?.switched?.ok === true &&
+  result?.removed?.ok === true;
 
 console.log("auth.me:", result?.auth?.ok === true ? "ok" : JSON.stringify(result?.auth));
 console.log("holiday.getRange 2026-09-30..10-08 条数:", holidayCount, "| 10-01:", oct1);
@@ -127,6 +157,7 @@ console.log("schedule.create 10-01:", result?.created?.ok === true ? "ok" : JSON
 console.log("share.create 10-01 overtime:", shareOvertime ? "true" : JSON.stringify(result?.share));
 console.log("rule.create:", result?.rule?.ok === true ? "ok" : JSON.stringify(result?.rule));
 console.log("schedule.list 11-07..11-12 条数:", Array.isArray(result?.farList?.data) ? result.farList.data.length : 0);
+console.log("rule.list 条数:", result?.ruleList?.data?.length ?? 0, "| 切换:", result?.switched?.ok === true, "| 删除:", result?.removed?.ok === true);
 
 const pass =
   holidayCount > 0 &&
@@ -134,7 +165,8 @@ const pass =
   weatherOk &&
   result?.created?.ok === true &&
   shareOvertime &&
-  rollingRule;
+  rollingRule &&
+  ruleManagement;
 console.log(pass ? "\n云端功能验证通过" : "\n云端功能验证失败");
 await miniProgram.close();
 process.exit(pass ? 0 : 1);

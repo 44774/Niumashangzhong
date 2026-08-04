@@ -158,6 +158,19 @@ export interface ScheduleRule extends ScheduleRuleInput {
   isActive: boolean;
 }
 
+export interface ScheduleRuleSummary {
+  id: string;
+  name: string;
+  startDate: string;
+  endDate: string | null;
+  timezone: string;
+  sequence: Array<{ shiftTemplateId: string }>;
+  generationHorizonDays: number;
+  version: number;
+  isActive: boolean;
+  isCurrent: boolean;
+}
+
 export interface ScheduleConflict {
   type: ConflictType;
   severity: ConflictSeverity;

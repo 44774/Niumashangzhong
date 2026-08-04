@@ -55,6 +55,12 @@ exports.main = async (event: any) => {
         return ok(await schedule.update(openid, payload));
       case "rule.create":
         return ok(await schedule.createRule(openid, payload));
+      case "rule.list":
+        return ok(await schedule.listRules(openid, payload.workspaceId));
+      case "rule.switch":
+        return ok(await schedule.switchRule(openid, payload.workspaceId, payload.ruleId));
+      case "rule.remove":
+        return ok(await schedule.removeRule(openid, payload.workspaceId, payload.ruleId));
       case "change.create":
         return ok(await change.create(openid, payload));
       case "change.list":

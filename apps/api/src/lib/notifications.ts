@@ -219,6 +219,7 @@ export async function extendRules(db: Db): Promise<void> {
             eq(scheduleInstances.workspaceId, rule.workspaceId),
             eq(scheduleInstances.ownerUserId, rule.ownerUserId),
             eq(scheduleInstances.businessDate, slot.date),
+            eq(scheduleInstances.source, "manual"),
             isNull(scheduleInstances.deletedAt),
           ),
         )
