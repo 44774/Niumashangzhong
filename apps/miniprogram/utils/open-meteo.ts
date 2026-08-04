@@ -36,7 +36,7 @@ export function mapWeatherCode(code: number): { text: string; code: string; warn
 }
 
 const CACHE_KEY = "wc_weather_cache";
-const CACHE_TTL = 6 * 60 * 60 * 1000;
+const CACHE_TTL = 30 * 60 * 1000;
 
 interface CacheEntry {
   date: string;

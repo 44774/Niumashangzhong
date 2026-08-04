@@ -24,12 +24,9 @@
 .tab-item.active {
   color: var(--wc-color-brand-primary);
   font-weight: 600;
-}
-
-.tab-item.active .tab-label {
   background: var(--wc-color-surface-subtle);
   border-radius: var(--wc-radius-pill);
-  padding: 0 28rpx;
+  margin: 14rpx 18rpx;
 }
 
 .tab-label {

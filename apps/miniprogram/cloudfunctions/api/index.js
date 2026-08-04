@@ -1316,16 +1316,18 @@ async function list3(openid, payload) {
   return res.data.map(toChangeRequest);
 }
 async function remove(openid, payload) {
-  var _a;
   await requireWorkspace(openid, payload.workspaceId);
-  const res = await db.collection("changeRequests").where({
-    _id: payload.id,
-    workspaceId: payload.workspaceId,
-    requesterOpenid: openid
-  }).remove();
-  if ((((_a = res.stats) == null ? void 0 : _a.removed) ?? 0) === 0) {
+  let doc = null;
+  try {
+    const res = await db.collection("changeRequests").doc(payload.id).get();
+    doc = res.data;
+  } catch {
     throw new CloudError("NOT_FOUND", "\u6539\u73ED\u8BB0\u5F55\u4E0D\u5B58\u5728", 404);
   }
+  if (!doc || doc.workspaceId !== payload.workspaceId || doc.requesterOpenid !== openid) {
+    throw new CloudError("NOT_FOUND", "\u6539\u73ED\u8BB0\u5F55\u4E0D\u5B58\u5728", 404);
+  }
+  await db.collection("changeRequests").doc(payload.id).remove();
   return { removed: payload.id };
 }
 

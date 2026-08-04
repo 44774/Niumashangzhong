@@ -107,16 +107,16 @@ export async function remove(
   payload: { workspaceId: string; id: string },
 ) {
   await requireWorkspace(openid, payload.workspaceId);
-  const res = await db
-    .collection("changeRequests")
-    .where({
-      _id: payload.id,
-      workspaceId: payload.workspaceId,
-      requesterOpenid: openid,
-    })
-    .remove();
-  if ((res.stats?.removed ?? 0) === 0) {
+  let doc: any = null;
+  try {
+    const res = await db.collection("changeRequests").doc(payload.id).get();
+    doc = res.data;
+  } catch {
     throw new CloudError("NOT_FOUND", "改班记录不存在", 404);
   }
+  if (!doc || doc.workspaceId !== payload.workspaceId || doc.requesterOpenid !== openid) {
+    throw new CloudError("NOT_FOUND", "改班记录不存在", 404);
+  }
+  await db.collection("changeRequests").doc(payload.id).remove();
   return { removed: payload.id };
 }

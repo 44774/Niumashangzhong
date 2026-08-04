@@ -3,7 +3,7 @@ import type { WeatherForecast, WeatherLocation } from "../typings/api";
 import { getDefaultLocation, normalizeLocation } from "../stores/location";
 
 const KEY = "wc_weather_cache";
-const TTL = 6 * 60 * 60 * 1000;
+const TTL = 30 * 60 * 1000;
 
 interface WeatherCacheEntry {
   date: string;

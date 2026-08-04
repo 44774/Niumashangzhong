@@ -7,7 +7,6 @@
     </view>
     <view class="row">
       <button class="today-btn" bindtap="goSchedules">排班表</button>
-      <button class="today-btn primary" bindtap="goToday">回到今天</button>
     </view>
   </view>
 
@@ -19,6 +18,10 @@
     bind:datetap="onDateTap"
     bind:datelongpress="onDateLongPress"
   />
+
+  <view class="float-area">
+    <view class="back-today-btn" bindtap="goToday">今天</view>
+  </view>
 
   <view class="section-gap"></view>
   <view class="card today-card">

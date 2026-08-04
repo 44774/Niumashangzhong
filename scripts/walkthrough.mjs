@@ -79,6 +79,30 @@ console.log(
     todayWeather: (await p.data("todayWeather"))?.conditionText ?? null,
   }),
 );
+// 非今日（8-10）卡片 → 临时改班（不应报错，应按日期进入）
+await p.callMethod("changeToday");
+let cp;
+for (let i = 0; i < 16; i += 1) {
+  cp = await miniProgram.currentPage();
+  const orig = await cp.data("original");
+  const err = await cp.data("error");
+  if (cp?.path === "pages/schedule-change/index" && (orig || err)) break;
+  await sleep(500);
+}
+console.log(
+  "change from 08-10 card:",
+  JSON.stringify({
+    path: cp?.path,
+    date: await cp.data("date"),
+    mode: await cp.data("mode"),
+    original: (await cp.data("original"))?.shiftSnapshot?.name ?? null,
+    templates: (await cp.data("templates"))?.length,
+    error: await cp.data("error"),
+  }),
+);
+await miniProgram.navigateBack();
+await sleep(1200);
+p = await miniProgram.currentPage();
 
 // 3. 周视图
 await miniProgram.switchTab("/pages/week/index");

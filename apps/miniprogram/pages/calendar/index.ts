@@ -257,7 +257,11 @@ Page({
 
   changeToday() {
     if (!this.data.selectedSummary) return;
-    wx.navigateTo({ url: `/pages/schedule-change/index?id=${this.data.selectedSummary.id}` });
+    const summary = this.data.selectedSummary;
+    const url = summary.id.startsWith("rule:")
+      ? `/pages/schedule-change/index?date=${summary.businessDate}`
+      : `/pages/schedule-change/index?id=${summary.id}`;
+    wx.navigateTo({ url });
   },
 
   shareToday() {

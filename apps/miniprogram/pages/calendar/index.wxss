@@ -33,10 +33,28 @@
   border: none;
 }
 
-.today-btn.primary {
-  background: var(--wc-color-brand-primary);
-  color: var(--wc-color-text-inverse);
+.float-area {
+  position: relative;
+  height: 0;
+  z-index: var(--wc-zIndex-sticky);
+}
+
+.back-today-btn {
+  position: absolute;
+  right: 32rpx;
+  top: -176rpx;
+  width: 112rpx;
+  height: 112rpx;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 2rpx solid var(--wc-color-brand-primary);
+  color: var(--wc-color-brand-primary);
+  font-size: 28rpx;
   font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--wc-shadow-sm);
 }
 
 .month-bar .row {
