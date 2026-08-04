@@ -14,9 +14,14 @@
     "db:migrate": "pnpm --filter @workcal/api db:migrate",
     "db:seed": "pnpm --filter @workcal/api db:seed",
     "dev:api": "pnpm --filter @workcal/api dev",
-    "smoke:api": "powershell -ExecutionPolicy Bypass -File scripts/smoke-api.ps1"
+    "smoke:api": "powershell -ExecutionPolicy Bypass -File scripts/smoke-api.ps1",
+    "smoke:mp": "node scripts/miniprogram-smoke.mjs",
+    "smoke:mp:all": "powershell -ExecutionPolicy Bypass -File scripts/run-mp-smoke.ps1"
   },
   "engines": {
     "node": ">=20"
+  },
+  "devDependencies": {
+    "miniprogram-automator": "^0.12.1"
   }
 }

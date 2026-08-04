@@ -41,6 +41,21 @@ pnpm gen:tokens        # 由设计令牌生成小程序 WXSS
 pnpm sync:types        # 共享类型同步到小程序 typings
 ```
 
+## 小程序自动化冒烟（连接微信开发者工具）
+
+仓库内置 `miniprogram-automator` 冒烟脚本，可连接正在运行的微信开发者工具，
+在模拟器里完成“登录 → 日历 → 详情 → 改班 → 分享”的流程检查并截图：
+
+```bash
+pnpm smoke:mp:all   # 自动启动后端 + 连接开发者工具 + 跑冒烟 + 关闭后端
+```
+
+前置条件：
+
+- 微信开发者工具已安装（脚本默认使用 `D:\ProgramFiles\WeChatDeveloperTools\cli.bat`，路径不同请修改 `scripts/miniprogram-smoke.mjs` 顶部的 `cliPath`）。
+- 自动化端口已开启：脚本会自动执行 `cli.bat auto --project apps/miniprogram --auto-port 9420`；也可以在开发者工具「设置 → 安全设置 → 服务端口」手动打开。
+- 截图输出到 `artifacts/miniprogram-smoke/`（已 gitignore）。
+
 ## 仓库结构
 
 ```text
