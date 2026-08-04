@@ -11,7 +11,7 @@ import { assert, assertDate, assertTime, CloudError, nowIso } from "./util";
 import { getForDate } from "./weather";
 import { get as getPrefs, rebuildJobs } from "./notify";
 
-function snapshotFromTemplate(tpl: any) {
+export function snapshotFromTemplate(tpl: any) {
   return {
     name: tpl.name,
     shortName: tpl.shortName,

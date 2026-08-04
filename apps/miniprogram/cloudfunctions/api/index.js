@@ -133,7 +133,9 @@ async function ensureUserAndWorkspace(openid, displayName) {
       createdAt: now,
       updatedAt: now
     };
-    await db.collection("users").doc(openid).set({ data: user });
+    const userData = { ...user };
+    delete userData._id;
+    await db.collection("users").doc(openid).set({ data: userData });
   }
   const workspaceRes = await db.collection("workspaces").where({ ownerOpenid: openid, type: "personal" }).limit(1).get();
   let workspace = workspaceRes.data[0];
@@ -418,6 +420,20 @@ function parseDate(date) {
 }
 function toDateString(d) {
   return d.toISOString().slice(0, 10);
+}
+function todayInTimezone(timezone) {
+  const now = /* @__PURE__ */ new Date();
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  }).formatToParts(now);
+  const get3 = (type) => {
+    var _a;
+    return ((_a = parts.find((p) => p.type === type)) == null ? void 0 : _a.value) ?? "";
+  };
+  return `${get3("year")}-${get3("month")}-${get3("day")}`;
 }
 function zonedTimeToIso(businessDate, time, timezone) {
   const offsetMinutes = timezoneOffsetMinutes(businessDate, timezone);
@@ -1165,6 +1181,47 @@ async function create4(openid, payload) {
   return toShareSnapshot(doc.data);
 }
 
+// apps/miniprogram/cloudfunctions/api/src/seed.ts
+async function seedDemo(openid) {
+  const { user, workspace } = await ensureUserAndWorkspace(openid, "\u5F20\u5C0F\u660E");
+  const templatesRes = await db.collection("shiftTemplates").where({ workspaceId: workspace._id, isActive: true }).orderBy("sortOrder", "asc").limit(10).get();
+  const templates = templatesRes.data;
+  const today = todayInTimezone(workspace.timezone);
+  const plan = [0, 1, 2, 3, 0, 1, 3];
+  let created = 0;
+  for (let i = 0; i < plan.length; i += 1) {
+    const date = addDays(today, i);
+    const exists = await db.collection("scheduleInstances").where({ workspaceId: workspace._id, ownerOpenid: openid, businessDate: date }).limit(1).get();
+    if (exists.data.length > 0) continue;
+    const tpl = templates[plan[i]];
+    if (!tpl) continue;
+    const snap = snapshotFromTemplate(tpl);
+    const times = instanceTimes(date, snap, workspace.timezone);
+    await db.collection("scheduleInstances").add({
+      data: {
+        workspaceId: workspace._id,
+        ownerOpenid: openid,
+        businessDate: date,
+        timezone: workspace.timezone,
+        startsAt: times.startsAt,
+        endsAt: times.endsAt,
+        kind: snap.kind,
+        shiftSnapshot: snap,
+        locationSnapshot: null,
+        note: null,
+        status: "scheduled",
+        source: "manual",
+        version: 1,
+        history: [],
+        createdAt: nowIso(),
+        updatedAt: nowIso()
+      }
+    });
+    created += 1;
+  }
+  return { user: toUser(user), workspace: toWorkspace(workspace), created };
+}
+
 // apps/miniprogram/cloudfunctions/api/src/index.ts
 import_wx_server_sdk2.default.init({ env: import_wx_server_sdk2.default.DYNAMIC_CURRENT_ENV });
 exports.main = async (event) => {
@@ -1182,6 +1239,8 @@ exports.main = async (event) => {
     switch (action) {
       case "system.ping":
         return ok({ pong: true });
+      case "system.seed":
+        return ok(await seedDemo(openid));
       case "auth.me": {
         const ctx = await ensureUserAndWorkspace(openid, payload.displayName);
         return ok({ user: toUser(ctx.user), workspace: toWorkspace(ctx.workspace) });

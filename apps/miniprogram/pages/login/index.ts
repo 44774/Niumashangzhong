@@ -1,6 +1,8 @@
 import { api } from "../../services/api";
-import { USE_CLOUDBASE } from "../../config";
+import { CLOUD_ENV_ID, USE_CLOUDBASE } from "../../config";
 import { setSession } from "../../stores/session";
+
+let cloudInitialized = false;
 
 function wxLoginCode(): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -31,6 +33,10 @@ Page({
     if (this.data.loading) return;
     this.setData({ loading: true });
     try {
+      if (!cloudInitialized) {
+        wx.cloud.init({ env: CLOUD_ENV_ID, traceUser: true });
+        cloudInitialized = true;
+      }
       const result = await api.loginDev("");
       setSession(result.accessToken, result.user, result.workspace);
       wx.switchTab({ url: "/pages/calendar/index" });

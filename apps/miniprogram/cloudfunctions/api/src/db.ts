@@ -124,7 +124,9 @@ export async function ensureUserAndWorkspace(
       createdAt: now,
       updatedAt: now,
     };
-    await db.collection("users").doc(openid).set({ data: user });
+    const userData = { ...user };
+    delete (userData as { _id?: string })._id;
+    await db.collection("users").doc(openid).set({ data: userData });
   }
 
   const workspaceRes = await db

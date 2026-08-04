@@ -1,6 +1,6 @@
 import automator from "miniprogram-automator";
 import { execFileSync } from "node:child_process";
-import { mkdirSync } from "node:fs";
+import { mkdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -10,6 +10,9 @@ const projectPath = join(root, "apps", "miniprogram");
 const wsEndpoint = "ws://127.0.0.1:9420";
 const artifactDir = join(root, "artifacts", "miniprogram-smoke");
 const apiBase = "http://127.0.0.1:3000/api/v1";
+const cloudMode = /USE_CLOUDBASE\s*=\s*true/.test(
+  readFileSync(join(root, "apps", "miniprogram", "config.ts"), "utf8"),
+);
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const results = [];
@@ -64,20 +67,55 @@ try {
 }
 
 try {
-  const backend = await backendUp();
-  record("后端 API 可用", backend, backend ? apiBase : "未启动，仅验证界面");
+  const backend = cloudMode || (await backendUp());
+  record("后端可用", backend, cloudMode ? "CloudBase 模式" : apiBase);
 
   await miniProgram.reLaunch("/pages/login/index");
-  await sleep(1500);
+  await sleep(1200);
   let page = await miniProgram.currentPage();
-  record("进入登录页", page?.path === "pages/login/index", page?.path);
 
   if (backend) {
-    await page.setData({ displayName: "张小明" });
-    await page.callMethod("onDevLogin");
-    await sleep(3500);
-    page = await miniProgram.currentPage();
-    record("开发登录后进入日历", page?.path === "pages/calendar/index", page?.path);
+    if (cloudMode) {
+      const start = Date.now();
+      while (Date.now() - start < 25_000) {
+        page = await miniProgram.currentPage();
+        if (page?.path === "pages/calendar/index") break;
+        await sleep(1000);
+      }
+      record("云开发自动登录进入日历", page?.path === "pages/calendar/index", page?.path);
+      try {
+        await miniProgram.evaluate(() => {
+          wx.cloud.callFunction({
+            name: "api",
+            data: { action: "system.seed" },
+            success: (res) => wx.setStorageSync("__diag_seed", JSON.stringify(res.result)),
+            fail: (err) => wx.setStorageSync("__diag_seed", `ERR: ${err.errMsg}`),
+          });
+          return "started";
+        });
+        await sleep(6000);
+        const seedResult = await miniProgram.evaluate(
+          () => wx.getStorageSync("__diag_seed") || "empty",
+        );
+        record(
+          "演示数据初始化",
+          !String(seedResult).startsWith("ERR") && String(seedResult) !== "empty",
+          String(seedResult),
+        );
+        await miniProgram.reLaunch("/pages/calendar/index");
+        await sleep(2500);
+        page = await miniProgram.currentPage();
+      } catch (err) {
+        record("演示数据初始化", false, err.message);
+      }
+    } else {
+      record("进入登录页", page?.path === "pages/login/index", page?.path);
+      await page.setData({ displayName: "张小明" });
+      await page.callMethod("onDevLogin");
+      await sleep(3500);
+      page = await miniProgram.currentPage();
+      record("开发登录后进入日历", page?.path === "pages/calendar/index", page?.path);
+    }
 
     const legend = await page.data("legend");
     record("月历加载班次图例", Array.isArray(legend) && legend.length > 0, `图例 ${legend?.length ?? 0} 项`);

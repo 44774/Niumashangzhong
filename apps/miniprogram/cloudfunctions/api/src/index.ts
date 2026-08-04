@@ -8,6 +8,7 @@ import * as change from "./change";
 import * as weather from "./weather";
 import * as notify from "./notify";
 import * as share from "./share";
+import { seedDemo } from "./seed";
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV as unknown as string });
 
@@ -26,6 +27,8 @@ exports.main = async (event: any) => {
     switch (action) {
       case "system.ping":
         return ok({ pong: true });
+      case "system.seed":
+        return ok(await seedDemo(openid));
       case "auth.me": {
         const ctx = await ensureUserAndWorkspace(openid, payload.displayName);
         return ok({ user: toUser(ctx.user), workspace: toWorkspace(ctx.workspace) });

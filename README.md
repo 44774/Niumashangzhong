@@ -75,8 +75,10 @@ tcb fn deploy dispatcher   # 部署通知定时器
 ```
 
 也可以在微信开发者工具中：云函数目录右键 →「上传并部署：云端安装依赖」。
-云开发模式切换回本地 Fastify：把 `apps/miniprogram/config.ts` 的 `USE_CLOUDBASE` 改为 `false`；
-自动化冒烟脚本 `pnpm smoke:mp:all` 适用于本地模式。
+云开发模式切换回本地 Fastify：把 `apps/miniprogram/config.ts` 的 `USE_CLOUDBASE` 改为 `false`。
+
+自动化冒烟同时支持两种模式：云模式会走自动登录，并通过 `system.seed` 写入演示排班后验证
+“日历 → 详情 → 改班 → 分享”全流程；本地模式则需要先启动 Fastify API。
 
 ## 仓库结构
 
