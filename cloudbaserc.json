@@ -1,0 +1,18 @@
+{
+  "envId": "cloud1-d7gn5yyw2a7816ffd",
+  "functionRoot": "apps/miniprogram/cloudfunctions",
+  "functions": [
+    {
+      "name": "api",
+      "timeout": 20,
+      "memorySize": 256,
+      "envVariables": {}
+    },
+    {
+      "name": "dispatcher",
+      "timeout": 10,
+      "memorySize": 128,
+      "envVariables": {}
+    }
+  ]
+}

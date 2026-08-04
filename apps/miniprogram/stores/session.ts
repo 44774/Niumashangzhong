@@ -1,10 +1,14 @@
 import type { User, Workspace } from "../typings/api";
+import { USE_CLOUDBASE } from "../config";
 
 const TOKEN_KEY = "wc_token";
 const WORKSPACE_KEY = "wc_workspace";
 const USER_KEY = "wc_user";
 
 export function getToken(): string {
+  if (USE_CLOUDBASE) {
+    return "cloud-token";
+  }
   return (wx.getStorageSync(TOKEN_KEY) as string) || "";
 }
 

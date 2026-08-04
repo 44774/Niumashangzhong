@@ -1,12 +1,15 @@
 {
-  "appid": "touristappid",
+  "appid": "wxdd407d232b60aff1",
   "compileType": "miniprogram",
   "libVersion": "3.8.12",
   "miniprogramRoot": "./",
+  "cloudfunctionRoot": "cloudfunctions/",
   "projectname": "work-calendar-miniprogram",
   "description": "工作日历微信小程序（个人模式第一轮）",
   "setting": {
-    "useCompilerPlugins": ["typescript"],
+    "useCompilerPlugins": [
+      "typescript"
+    ],
     "es6": true,
     "enhance": true,
     "postcss": true,
@@ -15,7 +18,29 @@
     "coverView": true,
     "showShadowRootInWxmlPanel": true,
     "packNpmManually": false,
-    "ignoreUploadUnusedFiles": true
+    "ignoreUploadUnusedFiles": true,
+    "minifyWXML": true,
+    "compileWorklet": false,
+    "uglifyFileName": false,
+    "uploadWithSourceMap": true,
+    "packNpmRelationList": [],
+    "minifyWXSS": true,
+    "localPlugins": false,
+    "disableUseStrict": false,
+    "condition": false,
+    "swc": false,
+    "disableSWC": true,
+    "babelSetting": {
+      "ignore": [],
+      "disablePlugins": [],
+      "outputPath": ""
+    }
   },
-  "condition": {}
+  "condition": {},
+  "simulatorPluginLibVersion": {},
+  "packOptions": {
+    "ignore": [],
+    "include": []
+  },
+  "editorSetting": {}
 }

@@ -1,4 +1,5 @@
 import { api } from "../../services/api";
+import { USE_CLOUDBASE } from "../../config";
 import { setSession } from "../../stores/session";
 
 function wxLoginCode(): Promise<string> {
@@ -18,6 +19,29 @@ Page({
 
   onInput(event: WechatMiniprogram.Input) {
     this.setData({ displayName: event.detail.value });
+  },
+
+  onShow() {
+    if (USE_CLOUDBASE) {
+      this.cloudAutoLogin();
+    }
+  },
+
+  async cloudAutoLogin() {
+    if (this.data.loading) return;
+    this.setData({ loading: true });
+    try {
+      const result = await api.loginDev("");
+      setSession(result.accessToken, result.user, result.workspace);
+      wx.switchTab({ url: "/pages/calendar/index" });
+    } catch (err) {
+      wx.showToast({
+        title: `云开发连接失败：${(err as Error).message}`,
+        icon: "none",
+      });
+    } finally {
+      this.setData({ loading: false });
+    }
   },
 
   async onWechatLogin() {

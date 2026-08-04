@@ -56,6 +56,28 @@ pnpm smoke:mp:all   # 自动启动后端 + 连接开发者工具 + 跑冒烟 + �
 - 自动化端口已开启：脚本会自动执行 `cli.bat auto --project apps/miniprogram --auto-port 9420`；也可以在开发者工具「设置 → 安全设置 → 服务端口」手动打开。
 - 截图输出到 `artifacts/miniprogram-smoke/`（已 gitignore）。
 
+## 微信云开发（CloudBase）
+
+小程序后端默认使用微信云开发，无需本地 API 和 PostgreSQL：
+
+- 环境 ID：`cloud1-d7gn5yyw2a7816ffd`（见 `apps/miniprogram/config.ts` 的 `CLOUD_ENV_ID`）。
+- 云函数位于 `apps/miniprogram/cloudfunctions/`：`api`（业务路由）+ `dispatcher`（通知定时器）。
+- 云函数源码为 TypeScript，通过 `pnpm build:cloud` 用 esbuild 打包成 `index.js`。
+- 登录是微信云开发的天然能力：云函数里通过 `cloud.getWXContext().OPENID` 识别用户，小程序不再需要登录页和 token。
+
+部署步骤（需要先执行一次 `tcb login` 扫码登录）：
+
+```bash
+pnpm build:cloud           # 打包云函数
+pnpm init:cloud            # 创建 12 个云数据库集合（幂等，可重复执行）
+tcb fn deploy api          # 部署业务云函数
+tcb fn deploy dispatcher   # 部署通知定时器
+```
+
+也可以在微信开发者工具中：云函数目录右键 →「上传并部署：云端安装依赖」。
+云开发模式切换回本地 Fastify：把 `apps/miniprogram/config.ts` 的 `USE_CLOUDBASE` 改为 `false`；
+自动化冒烟脚本 `pnpm smoke:mp:all` 适用于本地模式。
+
 ## 仓库结构
 
 ```text

@@ -6,7 +6,9 @@
   "scripts": {
     "gen:tokens": "node scripts/gen-tokens.mjs",
     "sync:types": "node scripts/sync-miniprogram-types.mjs",
-    "build": "pnpm -r build",
+    "build": "pnpm -r build && node scripts/build-cloudfunctions.mjs",
+    "build:cloud": "node scripts/build-cloudfunctions.mjs",
+    "init:cloud": "node scripts/init-cloud-db.mjs",
     "typecheck": "pnpm -r typecheck",
     "lint": "pnpm -r lint",
     "test": "pnpm -r test",
@@ -22,6 +24,7 @@
     "node": ">=20"
   },
   "devDependencies": {
+    "esbuild": "^0.28.1",
     "miniprogram-automator": "^0.12.1"
   }
 }
