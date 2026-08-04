@@ -1,0 +1,20 @@
+<view class="page">
+  <view class="card">
+    <text class="title-card">默认分享内容</text>
+    <view class="switch-row" wx:for="{{items}}" wx:key="key">
+      <text class="switch-title">{{item.label}}</text>
+      <switch checked="{{privacy[item.key]}}" data-key="{{item.key}}" bindchange="onChange" color="#1F6FEB" />
+    </view>
+  </view>
+
+  <view class="card">
+    <text class="title-card">隐私说明</text>
+    <view class="privacy-line">分享快照默认不包含：</view>
+    <view class="privacy-line">· 手机号、邮箱等联系方式</view>
+    <view class="privacy-line">· 精确地址与内部工位</view>
+    <view class="privacy-line">· 私人备注与审批意见</view>
+    <view class="privacy-line">· 组织内部标签</view>
+  </view>
+
+  <button class="btn-primary btn-block" bindtap="save">保存设置</button>
+</view>

@@ -1,0 +1,61 @@
+.profile {
+  display: flex;
+  align-items: center;
+  gap: 24rpx;
+}
+
+.avatar {
+  width: 112rpx;
+  height: 112rpx;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--wc-color-brand-primary), var(--wc-color-brand-cyan));
+  color: var(--wc-color-text-inverse);
+  font-size: 44rpx;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.profile-name {
+  display: block;
+  font-size: 36rpx;
+  font-weight: 700;
+}
+
+.profile-sub {
+  display: block;
+  color: var(--wc-color-text-secondary);
+  font-size: 26rpx;
+  margin-top: 4rpx;
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 28rpx 0;
+  font-size: 30rpx;
+  border-bottom: 1rpx solid var(--wc-color-border-default);
+}
+
+.menu-item:last-child {
+  border-bottom: none;
+}
+
+.menu-arrow {
+  color: var(--wc-color-text-tertiary);
+  font-size: 36rpx;
+}
+
+.logout-btn {
+  margin-top: 8rpx;
+  color: var(--wc-color-semantic-danger);
+}
+
+.version {
+  display: block;
+  text-align: center;
+  margin-top: 24rpx;
+  font-size: 22rpx;
+}

@@ -1,0 +1,31 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": [
+      "ES2020"
+    ],
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "types": [
+      "miniprogram-api-typings"
+    ],
+    "paths": {
+      "@wc/types": [
+        "./typings/api.ts"
+      ]
+    },
+    "baseUrl": "."
+  },
+  "include": [
+    "**/*.ts",
+    "typings/api.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
+}

@@ -1,0 +1,33 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: var(--wc-radius-sm);
+  font-weight: 600;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.badge-text {
+  display: block;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+
+.badge.sm {
+  height: 48rpx;
+  padding: 0 16rpx;
+  font-size: 22rpx;
+}
+
+.badge.md {
+  height: 56rpx;
+  padding: 0 20rpx;
+  font-size: 26rpx;
+}
+
+.badge.lg {
+  height: 64rpx;
+  padding: 0 24rpx;
+  font-size: 30rpx;
+}

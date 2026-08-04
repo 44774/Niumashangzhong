@@ -1,0 +1,83 @@
+.head {
+  margin-bottom: 24rpx;
+}
+
+.add-btn {
+  height: 68rpx;
+  line-height: 68rpx;
+  font-size: 26rpx;
+  padding: 0 24rpx;
+}
+
+.template-meta {
+  display: flex;
+  gap: 24rpx;
+  color: var(--wc-color-text-secondary);
+  font-size: 26rpx;
+  margin-top: 16rpx;
+}
+
+.template-edit {
+  color: var(--wc-color-brand-primary);
+  font-size: 26rpx;
+  padding: 0 16rpx;
+}
+
+.template-stop {
+  color: var(--wc-color-semantic-danger);
+  font-size: 26rpx;
+  padding: 0 16rpx;
+}
+
+.form-mask {
+  position: fixed;
+  inset: 0;
+  background: var(--wc-color-surface-mask);
+  z-index: var(--wc-zIndex-modal);
+  display: flex;
+  align-items: flex-end;
+}
+
+.form-sheet {
+  background: var(--wc-color-surface-card);
+  border-radius: var(--wc-radius-xl) var(--wc-radius-xl) 0 0;
+  padding: 40rpx 32rpx calc(40rpx + env(safe-area-inset-bottom));
+  width: 100%;
+  max-height: 85vh;
+  overflow-y: auto;
+}
+
+.close-btn {
+  font-size: 48rpx;
+  color: var(--wc-color-text-tertiary);
+  line-height: 1;
+}
+
+.picker-box {
+  background: var(--wc-color-surface-subtle);
+  border-radius: var(--wc-radius-md);
+  height: 88rpx;
+  line-height: 88rpx;
+  padding: 0 24rpx;
+  font-size: 28rpx;
+}
+
+.color-row {
+  gap: 20rpx;
+  flex-wrap: wrap;
+}
+
+.color-dot {
+  width: 60rpx;
+  height: 60rpx;
+  border-radius: 50%;
+  border: 4rpx solid transparent;
+}
+
+.color-dot.selected {
+  border-color: var(--wc-color-text-primary);
+}
+
+.save-btn {
+  margin-top: 32rpx;
+}

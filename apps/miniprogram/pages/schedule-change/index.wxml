@@ -1,0 +1,80 @@
+<view class="page">
+  <block wx:if="{{loading}}">
+    <view class="loading-mask">加载中…</view>
+  </block>
+  <error-state wx:elif="{{error}}" message="{{errorMessage}}" bind:retry="load" />
+  <block wx:else>
+    <view class="card original-card" wx:if="{{mode === 'change'}}">
+      <text class="title-card">原班次（只读）</text>
+      <view class="row original-row">
+        <shift-badge
+          name="{{original.shiftSnapshot.name}}"
+          short-name="{{original.shiftSnapshot.shortName}}"
+          color="{{original.shiftSnapshot.color}}"
+          size="lg"
+        />
+        <text class="original-time">{{originalTimeText}}</text>
+      </view>
+      <text class="original-date">{{dateLabel}}</text>
+    </view>
+
+    <view class="card">
+      <text class="title-card">{{mode === 'change' ? '改为' : '选择班次'}}</text>
+
+      <block wx:if="{{!customMode}}">
+        <text class="field-label">班次模板</text>
+        <picker range="{{templateNames}}" value="{{templateIndex}}" bindchange="onTemplateChange">
+          <view class="picker-box">{{selectedTemplateName || '请选择班次模板'}}</view>
+        </picker>
+      </block>
+
+      <view class="row-between custom-toggle">
+        <view>
+          <text class="switch-title">使用自定义时间</text>
+          <text class="switch-desc">不选模板时手动填写上下班时间</text>
+        </view>
+        <switch checked="{{customMode}}" bindchange="onCustomMode" color="#1F6FEB" />
+      </view>
+
+      <block wx:if="{{customMode}}">
+        <time-range-picker
+          start-time="{{form.startTime}}"
+          end-time="{{form.endTime}}"
+          ends-next-day="{{form.endsNextDay}}"
+          bind:change="onTimeChange"
+        />
+        <text class="field-label form-name-label">班次名称</text>
+        <input class="field-input" value="{{form.name}}" bindinput="onNameInput" placeholder="例如：值班" maxlength="12" />
+        <view class="row color-row">
+          <view
+            wx:for="{{colorOptions}}"
+            wx:key="*this"
+            class="color-dot {{form.color === item ? 'selected' : ''}}"
+            style="background: {{item}}"
+            data-color="{{item}}"
+            bindtap="onColorPick"
+          ></view>
+        </view>
+      </block>
+
+      <view class="section-gap"></view>
+      <text class="field-label">原因 / 备注（选填）</text>
+      <textarea
+        class="field-textarea"
+        value="{{reason}}"
+        bindinput="onReasonInput"
+        placeholder="说明改班原因，便于留痕"
+        maxlength="200"
+        auto-height
+      />
+    </view>
+
+    <view class="scope-note">
+      <text>仅修改当天，不影响其他日期</text>
+    </view>
+
+    <button class="btn-primary btn-block" loading="{{submitting}}" bindtap="submit">
+      {{mode === 'change' ? '保存修改' : '添加排班'}}
+    </button>
+  </block>
+</view>

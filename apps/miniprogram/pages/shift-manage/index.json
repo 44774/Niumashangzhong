@@ -1,0 +1,9 @@
+{
+  "navigationBarTitleText": "班次管理",
+  "usingComponents": {
+    "shift-badge": "/components/shift-badge/index",
+    "empty-state": "/components/empty-state/index",
+    "error-state": "/components/error-state/index",
+    "time-range-picker": "/components/time-range-picker/index"
+  }
+}

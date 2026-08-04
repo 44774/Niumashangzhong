@@ -1,0 +1,26 @@
+<view class="page">
+  <block wx:if="{{loading}}">
+    <view class="loading-mask">加载中…</view>
+  </block>
+  <error-state wx:elif="{{error}}" message="{{errorMessage}}" bind:retry="load" />
+  <empty-state
+    wx:elif="{{records.length === 0}}"
+    title="还没有改班记录"
+    desc="临时修改班次后会在这里留痕"
+  />
+  <view wx:else class="record-list">
+    <view class="card record-card" wx:for="{{records}}" wx:key="id">
+      <view class="row-between">
+        <text class="record-status status-{{item.status}}">{{item.statusText}}</text>
+        <text class="record-time">{{item.createdAtText}}</text>
+      </view>
+      <view class="row record-change">
+        <text class="record-old">{{item.originalSnapshot.name}}</text>
+        <text class="record-arrow">→</text>
+        <text class="record-new">{{item.requestedSnapshot.name}}</text>
+      </view>
+      <text class="record-reason" wx:if="{{item.reason}}">原因：{{item.reason}}</text>
+      <text class="record-note">个人模式直接生效，仅影响当天</text>
+    </view>
+  </view>
+</view>

@@ -1,0 +1,33 @@
+.time-row {
+  gap: 24rpx;
+}
+
+.time-field {
+  flex: 1;
+}
+
+.picker-box {
+  background: var(--wc-color-surface-subtle);
+  border-radius: var(--wc-radius-md);
+  height: 88rpx;
+  line-height: 88rpx;
+  padding: 0 24rpx;
+  font-size: 28rpx;
+}
+
+.next-day-row {
+  margin-top: 24rpx;
+}
+
+.next-day-title {
+  display: block;
+  font-size: 28rpx;
+  font-weight: 500;
+}
+
+.next-day-hint {
+  display: block;
+  color: var(--wc-color-text-tertiary);
+  font-size: 22rpx;
+  margin-top: 4rpx;
+}

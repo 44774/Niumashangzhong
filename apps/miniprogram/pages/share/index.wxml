@@ -1,0 +1,82 @@
+<view class="page">
+  <view class="card">
+    <text class="title-card">分享范围</text>
+    <view class="range-tabs">
+      <view
+        wx:for="{{rangeOptions}}"
+        wx:key="label"
+        class="range-tab {{rangeIndex === index ? 'active' : ''}}"
+        data-index="{{index}}"
+        bindtap="onRangeChange"
+      >{{item.label}}</view>
+    </view>
+    <text class="text-tertiary range-desc">{{rangeStart}} 至 {{rangeEnd}}</text>
+  </view>
+
+  <view class="card">
+    <text class="title-card">分享内容</text>
+    <view class="switch-row" wx:for="{{privacyItems}}" wx:key="key">
+      <text class="switch-title">{{item.label}}</text>
+      <switch checked="{{privacy[item.key]}}" data-key="{{item.key}}" bindchange="onPrivacyChange" color="#1F6FEB" />
+    </view>
+    <text class="privacy-hint">默认不分享手机号、精确地址、内部备注与审批意见</text>
+  </view>
+
+  <block wx:if="{{loading}}">
+    <view class="loading-mask">加载排班数据…</view>
+  </block>
+  <error-state wx:elif="{{error}}" message="{{errorMessage}}" bind:retry="load" />
+  <empty-state
+    wx:elif="{{previewEntries.length === 0}}"
+    title="该范围还没有排班"
+    desc="先在日历中添加排班，再来生成分享海报"
+    action-text="去日历"
+    bind:action="goCalendar"
+  />
+  <block wx:else>
+    <view class="card" wx:if="{{!posterPath}}">
+      <text class="title-card">内容预览</text>
+      <view wx:for="{{previewEntries}}" wx:key="date" class="preview-row">
+        <view class="preview-date">
+          <text class="preview-day">{{item.day}}</text>
+          <text class="preview-week">{{item.weekday}}</text>
+        </view>
+        <view class="preview-main">
+          <text class="preview-shift" style="color: {{item.color}};">{{item.shiftName}}</text>
+          <text class="preview-sub" wx:if="{{item.timeText}}">{{item.timeText}}</text>
+          <text class="preview-sub" wx:if="{{item.weather}}">{{item.weather.conditionText}}</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="card" wx:if="{{generating}}">
+      <view class="loading-mask">海报生成中…</view>
+    </view>
+
+    <canvas
+      wx:if="{{canvasVisible}}"
+      type="2d"
+      id="posterCanvas"
+      class="poster-canvas"
+      style="width: 100%; height: {{canvasHeight}}px;"
+    ></canvas>
+
+    <image
+      wx:if="{{posterPath}}"
+      src="{{posterPath}}"
+      mode="widthFix"
+      class="poster-image"
+    ></image>
+
+    <view class="row share-actions" wx:if="{{posterPath}}">
+      <button class="btn-primary share-action" bindtap="saveImage">保存图片</button>
+      <button class="btn-secondary share-action" open-type="share">分享给好友</button>
+    </view>
+    <button
+      wx:else
+      class="btn-primary btn-block"
+      loading="{{generating}}"
+      bindtap="generate"
+    >生成海报</button>
+  </block>
+</view>

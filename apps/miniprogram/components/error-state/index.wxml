@@ -1,0 +1,4 @@
+<view class="error">
+  <text class="error-message">{{message}}</text>
+  <button wx:if="{{retry}}" class="btn-secondary error-retry" bindtap="onRetry">重试</button>
+</view>

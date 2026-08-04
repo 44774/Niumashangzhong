@@ -1,0 +1,47 @@
+<view class="page">
+  <view class="row-between week-head">
+    <text class="title-md">未来七天</text>
+    <text class="text-tertiary">{{rangeLabel}}</text>
+  </view>
+
+  <block wx:if="{{loading}}">
+    <view class="loading-mask">加载中…</view>
+  </block>
+  <error-state wx:elif="{{error}}" message="{{errorMessage}}" bind:retry="load" />
+  <empty-state
+    wx:elif="{{rows.length === 0}}"
+    title="接下来七天没有排班"
+    desc="可以到日历中添加班次"
+    action-text="去日历"
+    bind:action="goCalendar"
+  />
+  <view wx:else class="week-list">
+    <view
+      wx:for="{{rows}}"
+      wx:key="date"
+      class="card week-row {{item.isToday ? 'today-row' : ''}}"
+      data-date="{{item.date}}"
+      data-id="{{item.instanceId}}"
+      bindtap="onRowTap"
+    >
+      <view class="date-col">
+        <text class="date-day">{{item.day}}</text>
+        <text class="date-week">{{item.weekday}}</text>
+      </view>
+      <view class="shift-col">
+        <shift-badge
+          wx:if="{{item.instanceId}}"
+          name="{{item.shiftName}}"
+          short-name="{{item.shiftShortName}}"
+          color="{{item.shiftColor}}"
+        />
+        <text wx:else class="rest-text">休息/未排班</text>
+        <text wx:if="{{item.timeText}}" class="shift-time">{{item.timeText}}</text>
+      </view>
+      <view class="weather-col">
+        <text wx:if="{{item.weatherText}}" class="weather-text">{{item.weatherText}}</text>
+        <text wx:else class="text-tertiary">暂无天气</text>
+      </view>
+    </view>
+  </view>
+</view>

@@ -1,0 +1,74 @@
+.original-card {
+  background: var(--wc-color-surface-subtle);
+}
+
+.original-row {
+  gap: 20rpx;
+  margin-top: 16rpx;
+}
+
+.original-time {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: var(--wc-color-text-primary);
+}
+
+.original-date {
+  display: block;
+  color: var(--wc-color-text-secondary);
+  font-size: 26rpx;
+  margin-top: 12rpx;
+}
+
+.picker-box {
+  background: var(--wc-color-surface-subtle);
+  border-radius: var(--wc-radius-md);
+  height: 88rpx;
+  line-height: 88rpx;
+  padding: 0 24rpx;
+  font-size: 28rpx;
+}
+
+.custom-toggle {
+  margin: 28rpx 0 8rpx;
+}
+
+.switch-title {
+  display: block;
+  font-size: 30rpx;
+  font-weight: 500;
+}
+
+.switch-desc {
+  display: block;
+  color: var(--wc-color-text-tertiary);
+  font-size: 24rpx;
+  margin-top: 4rpx;
+}
+
+.form-name-label {
+  margin-top: 28rpx;
+}
+
+.color-row {
+  gap: 24rpx;
+  margin-top: 20rpx;
+}
+
+.color-dot {
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: 50%;
+  border: 4rpx solid transparent;
+}
+
+.color-dot.selected {
+  border-color: var(--wc-color-text-primary);
+}
+
+.scope-note {
+  text-align: center;
+  color: var(--wc-color-text-tertiary);
+  font-size: 24rpx;
+  margin: 20rpx 0;
+}

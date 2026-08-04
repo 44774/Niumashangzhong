@@ -1,0 +1,27 @@
+<view class="page login-page">
+  <view class="brand">
+    <view class="brand-logo">
+      <text class="brand-logo-mark">✓</text>
+    </view>
+    <text class="title-lg brand-name">工作日历</text>
+    <text class="brand-desc">一眼看清哪天上班、几点上班、天气如何</text>
+  </view>
+
+  <view class="card login-card">
+    <text class="field-label">昵称（可选）</text>
+    <input
+      class="field-input"
+      placeholder="例如：张小明"
+      value="{{displayName}}"
+      bindinput="onInput"
+      maxlength="20"
+    />
+    <button class="btn-primary btn-block login-btn" loading="{{loading}}" bindtap="onWechatLogin">
+      微信一键登录
+    </button>
+    <button class="btn-secondary btn-block" loading="{{loading}}" bindtap="onDevLogin">
+      开发账号登录
+    </button>
+    <text class="login-hint">未配置微信凭证时，登录自动使用开发模式；个人排班数据仅保存在本工作空间。</text>
+  </view>
+</view>

@@ -1,0 +1,131 @@
+@import "styles/tokens.wxss";
+
+page {
+  background: var(--wc-color-surface-page);
+  color: var(--wc-color-text-primary);
+  font-size: 28rpx;
+  line-height: 1.5;
+  font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+
+view,
+text,
+button,
+input,
+textarea,
+picker,
+switch {
+  box-sizing: border-box;
+}
+
+.page {
+  min-height: 100vh;
+  padding: 24rpx 32rpx calc(140rpx + env(safe-area-inset-bottom));
+}
+
+.card {
+  background: var(--wc-color-surface-card);
+  border-radius: var(--wc-radius-lg);
+  padding: 32rpx;
+  margin-bottom: 24rpx;
+  box-shadow: var(--wc-shadow-sm);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+}
+
+.row-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.title-lg {
+  font-size: 56rpx;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--wc-color-text-primary);
+}
+
+.title-md {
+  font-size: 36rpx;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.title-card {
+  font-size: 32rpx;
+  font-weight: 600;
+}
+
+.text-secondary {
+  color: var(--wc-color-text-secondary);
+}
+
+.text-tertiary {
+  color: var(--wc-color-text-tertiary);
+}
+
+.btn-primary {
+  background: var(--wc-color-brand-primary);
+  color: var(--wc-color-text-inverse);
+  border-radius: var(--wc-radius-md);
+  height: 88rpx;
+  line-height: 88rpx;
+  font-size: 32rpx;
+  font-weight: 600;
+  padding: 0 32rpx;
+  border: none;
+}
+
+.btn-primary[disabled] {
+  background: #a8c8f5;
+  color: #ffffff;
+}
+
+.btn-secondary {
+  background: var(--wc-color-surface-subtle);
+  color: var(--wc-color-brand-primary);
+  border-radius: var(--wc-radius-md);
+  height: 88rpx;
+  line-height: 88rpx;
+  font-size: 32rpx;
+  font-weight: 600;
+  padding: 0 32rpx;
+  border: none;
+}
+
+.btn-block {
+  display: block;
+  width: 100%;
+}
+
+.field-label {
+  display: block;
+  font-size: 28rpx;
+  font-weight: 500;
+  color: var(--wc-color-text-primary);
+  margin-bottom: 12rpx;
+}
+
+.field-input,
+.field-textarea {
+  width: 100%;
+  background: var(--wc-color-surface-subtle);
+  border-radius: var(--wc-radius-md);
+  padding: 20rpx 24rpx;
+  font-size: 28rpx;
+  min-height: 88rpx;
+}
+
+.section-gap {
+  height: 24rpx;
+}
+
+.loading-mask {
+  padding: 80rpx 0;
+  text-align: center;
+  color: var(--wc-color-text-tertiary);
+}

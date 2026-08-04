@@ -1,0 +1,56 @@
+.login-page {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 100vh;
+}
+
+.brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 48rpx;
+}
+
+.brand-logo {
+  width: 128rpx;
+  height: 128rpx;
+  border-radius: 28rpx;
+  background: linear-gradient(135deg, var(--wc-color-brand-primary), var(--wc-color-brand-cyan));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 24rpx;
+}
+
+.brand-logo-mark {
+  color: var(--wc-color-text-inverse);
+  font-size: 64rpx;
+  font-weight: 700;
+}
+
+.brand-name {
+  margin-bottom: 8rpx;
+}
+
+.brand-desc {
+  color: var(--wc-color-text-secondary);
+  font-size: 26rpx;
+}
+
+.login-card {
+  padding: 40rpx 32rpx;
+}
+
+.login-btn {
+  margin-top: 32rpx;
+  margin-bottom: 20rpx;
+}
+
+.login-hint {
+  display: block;
+  margin-top: 24rpx;
+  color: var(--wc-color-text-tertiary);
+  font-size: 22rpx;
+  line-height: 1.6;
+}

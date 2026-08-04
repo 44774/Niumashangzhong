@@ -1,0 +1,59 @@
+.week-head {
+  margin-bottom: 24rpx;
+}
+
+.week-row {
+  display: flex;
+  align-items: center;
+  gap: 24rpx;
+}
+
+.week-row.today-row {
+  border: 2rpx solid var(--wc-color-brand-primary);
+}
+
+.date-col {
+  width: 96rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.date-day {
+  font-size: 40rpx;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.date-week {
+  color: var(--wc-color-text-secondary);
+  font-size: 24rpx;
+}
+
+.shift-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+  align-items: flex-start;
+}
+
+.shift-time {
+  color: var(--wc-color-text-secondary);
+  font-size: 26rpx;
+}
+
+.rest-text {
+  color: var(--wc-color-text-tertiary);
+  font-size: 26rpx;
+}
+
+.weather-col {
+  width: 160rpx;
+  text-align: right;
+}
+
+.weather-text {
+  color: var(--wc-color-text-secondary);
+  font-size: 24rpx;
+}

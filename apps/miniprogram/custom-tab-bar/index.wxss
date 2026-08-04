@@ -1,0 +1,31 @@
+.tab-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  background: var(--wc-color-surface-card);
+  border-top: 1rpx solid var(--wc-color-border-default);
+  padding-bottom: env(safe-area-inset-bottom);
+  z-index: var(--wc-zIndex-sticky);
+}
+
+.tab-item {
+  flex: 1;
+  height: 112rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--wc-color-text-tertiary);
+  font-size: 26rpx;
+}
+
+.tab-item.active {
+  color: var(--wc-color-brand-primary);
+  font-weight: 600;
+}
+
+.tab-label {
+  line-height: 112rpx;
+  height: 112rpx;
+}

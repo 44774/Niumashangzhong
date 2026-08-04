@@ -1,0 +1,23 @@
+<view class="time-range">
+  <view class="row time-row">
+    <view class="time-field">
+      <text class="field-label">开始时间</text>
+      <picker mode="time" value="{{startTime}}" bindchange="onStartChange">
+        <view class="picker-box">{{startTime || '请选择'}}</view>
+      </picker>
+    </view>
+    <view class="time-field">
+      <text class="field-label">结束时间</text>
+      <picker mode="time" value="{{endTime}}" bindchange="onEndChange">
+        <view class="picker-box">{{endTime || '请选择'}}</view>
+      </picker>
+    </view>
+  </view>
+  <view class="row-between next-day-row">
+    <view>
+      <text class="next-day-title">次日结束</text>
+      <text class="next-day-hint">结束时间早于或等于开始时自动按次日计算</text>
+    </view>
+    <switch checked="{{endsNextDay}}" bindchange="onNextDayChange" color="#1F6FEB" />
+  </view>
+</view>

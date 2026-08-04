@@ -1,0 +1,37 @@
+{
+  "pages": [
+    "pages/calendar/index",
+    "pages/week/index",
+    "pages/notify/index",
+    "pages/me/index",
+    "pages/login/index",
+    "pages/schedule-detail/index",
+    "pages/schedule-change/index",
+    "pages/share/index",
+    "pages/shift-manage/index",
+    "pages/change-records/index",
+    "pages/share-settings/index"
+  ],
+  "window": {
+    "navigationBarBackgroundColor": "#F5F9FF",
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "工作日历",
+    "backgroundColor": "#F5F9FF",
+    "backgroundTextStyle": "light"
+  },
+  "tabBar": {
+    "custom": true,
+    "color": "#8A98AA",
+    "selectedColor": "#1F6FEB",
+    "backgroundColor": "#FFFFFF",
+    "list": [
+      { "pagePath": "pages/calendar/index", "text": "日历" },
+      { "pagePath": "pages/week/index", "text": "周视图" },
+      { "pagePath": "pages/notify/index", "text": "提醒" },
+      { "pagePath": "pages/me/index", "text": "我的" }
+    ]
+  },
+  "style": "v2",
+  "lazyCodeLoading": "requiredComponents",
+  "sitemapLocation": "sitemap.json"
+}

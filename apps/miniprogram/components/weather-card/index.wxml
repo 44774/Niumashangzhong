@@ -1,0 +1,28 @@
+<view class="weather-card">
+  <block wx:if="{{loading}}">
+    <view class="skeleton-line w60"></view>
+    <view class="skeleton-line w40"></view>
+  </block>
+  <block wx:elif="{{error || !weather}}">
+    <view class="weather-row">
+      <text class="weather-fallback">暂时无法获取天气，不影响查看班表</text>
+    </view>
+  </block>
+  <block wx:else>
+    <view wx:if="{{weather.warningCodes.length > 0}}" class="warning-bar">
+      <text>天气预警：{{weather.conditionText}}，请注意出行安全</text>
+    </view>
+    <view class="weather-row">
+      <text class="weather-main">{{weather.conditionText}}</text>
+      <text class="weather-temp">{{weather.temperatureMin}}~{{weather.temperatureMax}}°C</text>
+    </view>
+    <view class="weather-sub">
+      <text wx:if="{{weather.humidityPercent != null}}">湿度 {{weather.humidityPercent}}%</text>
+      <text wx:if="{{weather.windDirection}}">{{weather.windDirection}} {{weather.windLevel}}</text>
+      <text wx:if="{{weather.airQuality}}">空气质量 {{weather.airQuality}}</text>
+    </view>
+    <view class="weather-updated" wx:if="{{weather.updatedAt}}">
+      更新于 {{updatedTime}}
+    </view>
+  </block>
+</view>

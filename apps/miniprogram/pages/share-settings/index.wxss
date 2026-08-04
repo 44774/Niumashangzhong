@@ -1,0 +1,16 @@
+.switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20rpx 0;
+}
+
+.switch-title {
+  font-size: 30rpx;
+}
+
+.privacy-line {
+  color: var(--wc-color-text-secondary);
+  font-size: 26rpx;
+  line-height: 1.8;
+}

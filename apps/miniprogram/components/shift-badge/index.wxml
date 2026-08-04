@@ -1,0 +1,6 @@
+<view
+  class="badge {{size === 'sm' ? 'sm' : size === 'lg' ? 'lg' : 'md'}}"
+  style="background: {{bgColor}}; color: {{color}};"
+>
+  <text class="badge-text">{{name || shortName}}</text>
+</view>

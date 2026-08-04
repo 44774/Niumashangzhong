@@ -1,0 +1,7 @@
+{
+  "navigationBarTitleText": "分享班表",
+  "usingComponents": {
+    "error-state": "/components/error-state/index",
+    "empty-state": "/components/empty-state/index"
+  }
+}

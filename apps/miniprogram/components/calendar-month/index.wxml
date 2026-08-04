@@ -1,0 +1,31 @@
+<view class="calendar">
+  <view class="week-header">
+    <text wx:for="{{['一','二','三','四','五','六','日']}}" wx:key="*this" class="week-cell">{{item}}</text>
+  </view>
+  <view class="grid">
+    <view
+      wx:for="{{cells}}"
+      wx:key="date"
+      class="day-cell {{item.inMonth ? '' : 'dim'}} {{item.isToday ? 'today' : ''}} {{item.date === selectedDate ? 'selected' : ''}}"
+      data-date="{{item.date}}"
+      bindtap="onTap"
+      bindlongpress="onLongPress"
+    >
+      <text class="day-number">{{item.day}}</text>
+      <view class="day-shifts">
+        <text
+          wx:for="{{shiftMap[item.date] || []}}"
+          wx:for-item="shift"
+          wx:key="name"
+          class="day-shift"
+          style="background: {{shift.color}}1A; color: {{shift.color}};"
+        >{{shift.shortName}}</text>
+      </view>
+    </view>
+  </view>
+  <view class="legend">
+    <text wx:for="{{legend}}" wx:key="name" class="legend-item">
+      <text class="legend-dot" style="background: {{item.color}}"></text>{{item.shortName}}
+    </text>
+  </view>
+</view>

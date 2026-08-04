@@ -1,0 +1,54 @@
+<view class="page">
+  <view class="card">
+    <text class="title-card">上班提醒</text>
+    <text class="card-desc">提前多长时间提醒（可多选）</text>
+    <view class="reminder-options">
+      <view
+        wx:for="{{reminderOptions}}"
+        wx:key="value"
+        class="reminder-option {{item.checked ? 'checked' : ''}}"
+        data-value="{{item.value}}"
+        bindtap="toggleReminder"
+      >{{item.label}}</view>
+    </view>
+  </view>
+
+  <view class="card">
+    <view class="row-between switch-row">
+      <view>
+        <text class="switch-title">天气提醒</text>
+        <text class="switch-desc">上班当天附带天气摘要与异常天气预警</text>
+      </view>
+      <switch checked="{{prefs.weatherEnabled}}" bindchange="onWeatherChange" color="#1F6FEB" />
+    </view>
+    <view class="row-between switch-row">
+      <view>
+        <text class="switch-title">排班变更提醒</text>
+        <text class="switch-desc">排班新增、修改或取消时通知</text>
+      </view>
+      <switch checked="{{prefs.scheduleChangesEnabled}}" bindchange="onScheduleChangeToggle" color="#1F6FEB" />
+    </view>
+  </view>
+
+  <view class="card">
+    <text class="title-card">勿扰时段</text>
+    <view class="row quiet-row">
+      <picker mode="time" value="{{prefs.quietHours.start}}" bindchange="onQuietStart">
+        <view class="quiet-picker">{{prefs.quietHours.start || '22:30'}}</view>
+      </picker>
+      <text class="quiet-sep">至</text>
+      <picker mode="time" value="{{prefs.quietHours.end}}" bindchange="onQuietEnd">
+        <view class="quiet-picker">{{prefs.quietHours.end || '07:00'}}</view>
+      </picker>
+    </view>
+  </view>
+
+  <view class="card">
+    <text class="title-card">微信订阅消息</text>
+    <text class="card-desc">开发模式无需订阅；配置真实模板 ID 后，点击下方按钮授权接收提醒</text>
+    <button class="btn-secondary btn-block subscribe-btn" bindtap="subscribe">订阅提醒</button>
+    <text class="text-tertiary subscribe-status">{{subscribeStatus}}</text>
+  </view>
+
+  <button class="btn-primary btn-block" loading="{{saving}}" bindtap="save">保存设置</button>
+</view>

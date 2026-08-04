@@ -1,0 +1,66 @@
+.record-status {
+  font-size: 26rpx;
+  font-weight: 600;
+  border-radius: var(--wc-radius-pill);
+  padding: 8rpx 20rpx;
+}
+
+.status-approved {
+  background: rgba(22, 163, 74, 0.12);
+  color: var(--wc-color-semantic-success);
+}
+
+.status-pending {
+  background: rgba(245, 158, 11, 0.12);
+  color: #b45309;
+}
+
+.status-rejected {
+  background: rgba(239, 68, 68, 0.12);
+  color: var(--wc-color-semantic-danger);
+}
+
+.status-withdrawn,
+.status-expired {
+  background: var(--wc-color-surface-subtle);
+  color: var(--wc-color-text-tertiary);
+}
+
+.record-time {
+  color: var(--wc-color-text-tertiary);
+  font-size: 22rpx;
+}
+
+.record-change {
+  gap: 16rpx;
+  margin-top: 16rpx;
+}
+
+.record-old {
+  color: var(--wc-color-text-secondary);
+  text-decoration: line-through;
+  font-size: 30rpx;
+}
+
+.record-arrow {
+  color: var(--wc-color-text-tertiary);
+}
+
+.record-new {
+  font-size: 32rpx;
+  font-weight: 700;
+}
+
+.record-reason {
+  display: block;
+  color: var(--wc-color-text-secondary);
+  font-size: 26rpx;
+  margin-top: 12rpx;
+}
+
+.record-note {
+  display: block;
+  color: var(--wc-color-text-tertiary);
+  font-size: 22rpx;
+  margin-top: 8rpx;
+}

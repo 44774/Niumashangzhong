@@ -1,0 +1,57 @@
+<view class="page">
+  <view class="row-between month-bar">
+    <view class="row month-nav">
+      <text class="month-arrow" bindtap="prevMonth">‹</text>
+      <text class="month-label">{{monthLabel}}</text>
+      <text class="month-arrow" bindtap="nextMonth">›</text>
+    </view>
+    <button class="today-btn" bindtap="goToday">今天</button>
+  </view>
+
+  <calendar-month
+    cells="{{cells}}"
+    selected-date="{{selectedDate}}"
+    shift-map="{{shiftMap}}"
+    legend="{{legend}}"
+    bind:datetap="onDateTap"
+    bind:datelongpress="onDateLongPress"
+  />
+
+  <view class="section-gap"></view>
+  <view class="card today-card">
+    <view class="row-between">
+      <text class="title-card">今日排班</text>
+      <text class="text-tertiary">{{todayLabel}}</text>
+    </view>
+    <block wx:if="{{loading}}">
+      <view class="loading-mask">加载中…</view>
+    </block>
+    <error-state wx:elif="{{error}}" message="{{errorMessage}}" bind:retry="load" />
+    <empty-state
+      wx:elif="{{!todaySummary}}"
+      title="今天还没有排班"
+      desc="添加一个班次，让工作安排一目了然"
+      action-text="添加排班"
+      bind:action="addTodaySchedule"
+    />
+    <block wx:else>
+      <view class="row-between today-main">
+        <shift-badge
+          name="{{todaySummary.shiftSnapshot.name}}"
+          short-name="{{todaySummary.shiftSnapshot.shortName}}"
+          color="{{todaySummary.shiftSnapshot.color}}"
+          size="lg"
+        />
+        <text class="today-time">{{todayTimeText}}</text>
+      </view>
+      <view class="today-meta">
+        <text wx:if="{{todayLocation}}">{{todayLocation}}</text>
+        <text wx:if="{{todayDuration}}">{{todayDuration}}</text>
+      </view>
+      <view class="row today-actions">
+        <button class="btn-secondary today-action" bindtap="changeToday">临时改班</button>
+        <button class="btn-secondary today-action" bindtap="shareToday">分享班表</button>
+      </view>
+    </block>
+  </view>
+</view>

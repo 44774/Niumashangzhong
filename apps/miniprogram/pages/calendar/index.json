@@ -1,0 +1,9 @@
+{
+  "navigationBarTitleText": "我的班表",
+  "usingComponents": {
+    "calendar-month": "/components/calendar-month/index",
+    "shift-badge": "/components/shift-badge/index",
+    "empty-state": "/components/empty-state/index",
+    "error-state": "/components/error-state/index"
+  }
+}

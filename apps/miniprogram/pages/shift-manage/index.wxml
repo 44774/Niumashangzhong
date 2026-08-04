@@ -1,0 +1,83 @@
+<view class="page">
+  <view class="row-between head">
+    <text class="title-md">班次模板</text>
+    <button class="btn-secondary add-btn" bindtap="openCreate">新建班次</button>
+  </view>
+
+  <block wx:if="{{loading}}">
+    <view class="loading-mask">加载中…</view>
+  </block>
+  <error-state wx:elif="{{error}}" message="{{errorMessage}}" bind:retry="load" />
+  <empty-state
+    wx:elif="{{templates.length === 0}}"
+    title="还没有班次模板"
+    desc="创建常用班次，排班时一键选择"
+    action-text="新建班次"
+    bind:action="openCreate"
+  />
+  <block wx:else>
+    <view class="card template-card" wx:for="{{templates}}" wx:key="id">
+      <view class="row-between">
+        <shift-badge
+          name="{{item.name}}"
+          short-name="{{item.shortName}}"
+          color="{{item.color}}"
+          size="md"
+        />
+        <view class="row">
+          <text class="template-edit" data-index="{{index}}" bindtap="openEdit">编辑</text>
+          <text class="template-stop" wx:if="{{item.isActive}}" data-index="{{index}}" bindtap="deactivate">停用</text>
+        </view>
+      </view>
+      <view class="template-meta">
+        <text>{{item.startTime && item.endTime ? item.startTime + '–' + item.endTime : '全天'}}</text>
+        <text wx:if="{{item.unpaidBreakMinutes > 0}}">休息 {{item.unpaidBreakMinutes}} 分钟</text>
+      </view>
+    </view>
+  </block>
+
+  <view class="form-mask" wx:if="{{showForm}}" bindtap="closeForm">
+    <view class="form-sheet" catchtap="noop">
+      <view class="row-between">
+        <text class="title-card">{{editingId ? '编辑班次' : '新建班次'}}</text>
+        <text class="close-btn" bindtap="closeForm">×</text>
+      </view>
+
+      <text class="field-label">名称</text>
+      <input class="field-input" value="{{form.name}}" bindinput="onNameInput" maxlength="80" />
+
+      <text class="field-label">简称</text>
+      <input class="field-input" value="{{form.shortName}}" bindinput="onShortNameInput" maxlength="4" />
+
+      <text class="field-label">类型</text>
+      <picker range="{{kindLabels}}" value="{{kindIndex}}" bindchange="onKindChange">
+        <view class="picker-box">{{kindLabels[kindIndex]}}</view>
+      </picker>
+
+      <text class="field-label">颜色</text>
+      <view class="row color-row">
+        <view
+          wx:for="{{colorOptions}}"
+          wx:key="*this"
+          class="color-dot {{form.color === item ? 'selected' : ''}}"
+          style="background: {{item}}"
+          data-color="{{item}}"
+          bindtap="onColorPick"
+        ></view>
+      </view>
+
+      <block wx:if="{{form.kind !== 'rest'}}">
+        <time-range-picker
+          start-time="{{form.startTime}}"
+          end-time="{{form.endTime}}"
+          ends-next-day="{{form.endsNextDay}}"
+          bind:change="onTimeChange"
+        />
+        <text class="field-label">无薪休息（分钟）</text>
+        <input class="field-input" type="number" value="{{form.unpaidBreakMinutes}}" bindinput="onBreakInput" />
+      </block>
+
+      <button class="btn-primary btn-block save-btn" loading="{{saving}}" bindtap="save">保存</button>
+    </view>
+  </view>
+</view>

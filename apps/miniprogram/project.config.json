@@ -1,0 +1,21 @@
+{
+  "appid": "touristappid",
+  "compileType": "miniprogram",
+  "libVersion": "3.8.12",
+  "miniprogramRoot": "./",
+  "projectname": "work-calendar-miniprogram",
+  "description": "工作日历微信小程序（个人模式第一轮）",
+  "setting": {
+    "useCompilerPlugins": ["typescript"],
+    "es6": true,
+    "enhance": true,
+    "postcss": true,
+    "minified": true,
+    "urlCheck": false,
+    "coverView": true,
+    "showShadowRootInWxmlPanel": true,
+    "packNpmManually": false,
+    "ignoreUploadUnusedFiles": true
+  },
+  "condition": {}
+}
