@@ -1,4 +1,8 @@
 <view class="page">
+  <block wx:if="{{loading}}">
+    <skeleton variant="form" />
+  </block>
+  <block wx:else>
   <view class="card">
     <text class="title-card">上班提醒</text>
     <text class="card-desc">提前多长时间提醒（可多选）</text>
@@ -70,6 +74,7 @@
   </view>
 
   <button class="btn-primary btn-block" loading="{{saving}}" bindtap="save">保存设置</button>
+  </block>
 
   <privacy-popup id="privacy-popup" />
 </view>

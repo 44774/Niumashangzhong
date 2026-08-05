@@ -1,6 +1,7 @@
 {
   "navigationBarTitleText": "排班详情",
   "usingComponents": {
+    "skeleton": "/components/skeleton/index",
     "shift-badge": "/components/shift-badge/index",
     "weather-card": "/components/weather-card/index",
     "empty-state": "/components/empty-state/index",

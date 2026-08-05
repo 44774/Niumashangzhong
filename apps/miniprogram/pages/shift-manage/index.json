@@ -1,6 +1,7 @@
 {
   "navigationBarTitleText": "班次管理",
   "usingComponents": {
+    "skeleton": "/components/skeleton/index",
     "shift-badge": "/components/shift-badge/index",
     "empty-state": "/components/empty-state/index",
     "error-state": "/components/error-state/index",

@@ -1,6 +1,6 @@
 <view class="page">
   <block wx:if="{{loading}}">
-    <view class="loading-mask">加载中…</view>
+    <skeleton variant="form" />
   </block>
   <error-state wx:elif="{{error}}" message="{{errorMessage}}" bind:retry="load" />
   <block wx:else>

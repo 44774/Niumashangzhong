@@ -1,4 +1,8 @@
 <view class="page">
+  <block wx:if="{{loading}}">
+    <skeleton variant="cards" cards="3" rows="3" />
+  </block>
+  <block wx:else>
   <view class="card profile">
     <image wx:if="{{user.avatarUrl}}" class="avatar-img" src="{{user.avatarUrl}}" mode="aspectFill" />
     <view wx:else class="avatar">{{avatarText}}</view>
@@ -48,4 +52,5 @@
 
   <button class="btn-secondary btn-block logout-btn" bindtap="logout">退出登录</button>
   <text class="text-tertiary version">{{appName}} {{version}} · 个人模式</text>
+  </block>
 </view>

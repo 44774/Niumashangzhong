@@ -26,6 +26,8 @@ Page({
       checked: true,
     })),
     saving: false,
+    loading: true,
+    loaded: false,
     subscribeStatus: "",
     subscribing: false,
     subscribeTemplates: [] as SubscribeTemplateInfo[],
@@ -51,6 +53,7 @@ Page({
   },
 
   async load() {
+    if (!this.data.loaded) this.setData({ loading: true });
     try {
       const [prefs, templates] = await Promise.all([
         api.notificationPreferences(),
@@ -74,8 +77,11 @@ Page({
               }))
             : templates,
         subscriptionStatus: this.buildSubscriptionStatus(prefs.subscriptions ?? []),
+        loaded: true,
+        loading: false,
       });
     } catch (err) {
+      this.setData({ loading: false });
       wx.showToast({ title: (err as Error).message, icon: "none" });
     }
   },

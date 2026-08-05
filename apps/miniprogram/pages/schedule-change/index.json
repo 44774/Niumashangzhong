@@ -1,6 +1,7 @@
 {
   "navigationBarTitleText": "临时改班",
   "usingComponents": {
+    "skeleton": "/components/skeleton/index",
     "shift-badge": "/components/shift-badge/index",
     "time-range-picker": "/components/time-range-picker/index",
     "error-state": "/components/error-state/index"

@@ -5,7 +5,7 @@
   </view>
 
   <block wx:if="{{loading}}">
-    <view class="loading-mask">加载中…</view>
+    <skeleton cards="4" rows="2" />
   </block>
   <error-state wx:elif="{{error}}" message="{{errorMessage}}" bind:retry="load" />
   <empty-state

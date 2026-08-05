@@ -1,6 +1,7 @@
 {
   "navigationBarTitleText": "新建循环排班",
   "usingComponents": {
+    "skeleton": "/components/skeleton/index",
     "shift-badge": "/components/shift-badge/index",
     "error-state": "/components/error-state/index"
   }

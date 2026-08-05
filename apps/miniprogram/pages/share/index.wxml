@@ -41,7 +41,7 @@
   </view>
 
   <block wx:if="{{loading}}">
-    <view class="loading-mask">加载排班数据…</view>
+    <skeleton cards="3" rows="3" />
   </block>
   <error-state wx:elif="{{error}}" message="{{errorMessage}}" bind:retry="load" />
   <empty-state

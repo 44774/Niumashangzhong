@@ -9,6 +9,7 @@ Page({
     avatarText: "",
     appName: APP_NAME,
     version: APP_VERSION,
+    loading: true,
   },
 
   onShow() {
@@ -36,12 +37,14 @@ Page({
       user,
       workspace,
       avatarText: user.displayName.slice(0, 1) || "工",
+      loading: !user.displayName,
     });
     try {
       const me = await api.me();
-      this.setData({ user: me, avatarText: me.displayName.slice(0, 1) || "工" });
+      this.setData({ user: me, avatarText: me.displayName.slice(0, 1) || "工", loading: false });
     } catch {
       // 使用本地缓存继续展示
+      this.setData({ loading: false });
     }
   },
 

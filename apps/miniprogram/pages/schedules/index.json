@@ -1,6 +1,7 @@
 {
   "navigationBarTitleText": "排班表管理",
   "usingComponents": {
+    "skeleton": "/components/skeleton/index",
     "empty-state": "/components/empty-state/index",
     "error-state": "/components/error-state/index"
   }
