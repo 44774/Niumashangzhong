@@ -64,6 +64,9 @@
     <view wx:if="{{subscribeTemplates.length === 0}}" class="subscribe-empty">
       暂未配置订阅消息模板，配置模板 ID 后即可订阅
     </view>
+    <text wx:if="{{subscribeTemplates.length === 1}}" class="card-desc">
+      天气提醒与上班提醒共用同一模板，一次订阅即可
+    </text>
     <button
       class="btn-secondary btn-block subscribe-btn"
       loading="{{subscribing}}"

@@ -796,21 +796,28 @@ async function sync(openid, payload) {
 
 // apps/miniprogram/cloudfunctions/api/src/subscribe-config.ts
 function getSubscribeTemplates() {
+  const shiftTemplateId = process.env.SUBSCRIBE_SHIFT_TEMPLATE_ID || "";
+  const weatherTemplateId = process.env.SUBSCRIBE_WEATHER_TEMPLATE_ID || shiftTemplateId;
   const list4 = [
     {
       key: "shift_reminder",
-      templateId: process.env.SUBSCRIBE_SHIFT_TEMPLATE_ID || "",
+      templateId: shiftTemplateId,
       page: "pages/calendar/index",
       name: "\u4E0A\u73ED\u63D0\u9192"
     },
     {
       key: "weather_reminder",
-      templateId: process.env.SUBSCRIBE_WEATHER_TEMPLATE_ID || "",
+      templateId: weatherTemplateId,
       page: "pages/calendar/index",
       name: "\u5929\u6C14\u63D0\u9192"
     }
   ];
-  return list4.filter((item) => item.templateId.length > 0);
+  const seen = /* @__PURE__ */ new Set();
+  return list4.filter((item) => {
+    if (!item.templateId || seen.has(item.templateId)) return false;
+    seen.add(item.templateId);
+    return true;
+  });
 }
 
 // apps/miniprogram/cloudfunctions/api/src/notify.ts

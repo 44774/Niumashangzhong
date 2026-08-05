@@ -11,21 +11,29 @@ export interface SubscribeTemplateConfig {
 }
 
 export function getSubscribeTemplates(): SubscribeTemplateConfig[] {
+  const shiftTemplateId = process.env.SUBSCRIBE_SHIFT_TEMPLATE_ID || "";
+  const weatherTemplateId = process.env.SUBSCRIBE_WEATHER_TEMPLATE_ID || shiftTemplateId;
   const list: SubscribeTemplateConfig[] = [
     {
       key: "shift_reminder",
-      templateId: process.env.SUBSCRIBE_SHIFT_TEMPLATE_ID || "",
+      templateId: shiftTemplateId,
       page: "pages/calendar/index",
       name: "上班提醒",
     },
     {
       key: "weather_reminder",
-      templateId: process.env.SUBSCRIBE_WEATHER_TEMPLATE_ID || "",
+      templateId: weatherTemplateId,
       page: "pages/calendar/index",
       name: "天气提醒",
     },
   ];
-  return list.filter((item) => item.templateId.length > 0);
+  // 天气模板未单独配置时复用上班提醒模板，并在订阅列表中按模板 ID 去重
+  const seen = new Set<string>();
+  return list.filter((item) => {
+    if (!item.templateId || seen.has(item.templateId)) return false;
+    seen.add(item.templateId);
+    return true;
+  });
 }
 
 export function getSubscribeTemplateByKey(key: string): SubscribeTemplateConfig | null {

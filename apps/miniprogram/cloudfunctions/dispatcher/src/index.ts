@@ -18,7 +18,7 @@ function templateFor(job: any): { templateId: string; name: string } | null {
     return { templateId: SHIFT_TEMPLATE_ID, name: "上班提醒" };
   }
   if (job.type === "weather_reminder") {
-    return { templateId: WEATHER_TEMPLATE_ID, name: "天气提醒" };
+    return { templateId: WEATHER_TEMPLATE_ID || SHIFT_TEMPLATE_ID, name: "天气提醒" };
   }
   return null;
 }

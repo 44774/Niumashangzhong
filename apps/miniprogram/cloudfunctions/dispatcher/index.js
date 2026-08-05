@@ -38,7 +38,7 @@ function templateFor(job) {
     return { templateId: SHIFT_TEMPLATE_ID, name: "\u4E0A\u73ED\u63D0\u9192" };
   }
   if (job.type === "weather_reminder") {
-    return { templateId: WEATHER_TEMPLATE_ID, name: "\u5929\u6C14\u63D0\u9192" };
+    return { templateId: WEATHER_TEMPLATE_ID || SHIFT_TEMPLATE_ID, name: "\u5929\u6C14\u63D0\u9192" };
   }
   return null;
 }
