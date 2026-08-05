@@ -12,22 +12,34 @@
     </view>
   </view>
 
-  <view class="month-list">
-    <view
-      wx:for="{{months}}"
-      wx:key="key"
-      class="month-block"
+  <view class="calendar-area">
+    <scroll-view
+      class="calendar-scroll"
+      scroll-y
+      enhanced
+      show-scrollbar="{{false}}"
+      scroll-top="{{scrollTop}}"
+      bindscroll="onScroll"
     >
-      <calendar-month
-        cells="{{item.cells}}"
-        selected-date="{{selectedDate}}"
-        shift-map="{{item.shiftMap}}"
-        legend="{{item.legend}}"
-        loading="{{item.loading}}"
-        bind:datetap="onDateTap"
-        bind:datelongpress="onDateLongPress"
-      />
-    </view>
+      <view class="calendar-list">
+        <view
+          wx:for="{{months}}"
+          wx:key="key"
+          class="month-block"
+        >
+          <calendar-month
+            cells="{{item.cells}}"
+            selected-date="{{selectedDate}}"
+            shift-map="{{item.shiftMap}}"
+            legend="{{item.legend}}"
+            loading="{{item.loading}}"
+            bind:datetap="onDateTap"
+            bind:datelongpress="onDateLongPress"
+          />
+        </view>
+      </view>
+    </scroll-view>
+    <view class="back-today-btn" wx:if="{{showBackToday}}" bindtap="goToday">今天</view>
   </view>
 
   <view class="section-gap"></view>
@@ -72,6 +84,4 @@
       </view>
     </block>
   </view>
-
-  <view class="back-today-btn" wx:if="{{showBackToday}}" bindtap="goToday">今天</view>
 </view>

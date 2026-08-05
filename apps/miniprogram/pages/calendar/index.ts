@@ -84,6 +84,7 @@ Page({
     monthLabel: "",
     monthValue: "",
     months: [] as MonthVM[],
+    scrollTop: 0,
     monthHeight: 0,
     selectedDate: "",
     selectedSummary: null as ScheduleInstance | null,
@@ -313,7 +314,7 @@ Page({
         const index = this.data.months.findIndex((vm) => vm.key === opts.jumpTo);
         if (index >= 0 && this.data.monthHeight > 0) {
           correctionUntil = Date.now() + 300;
-          wx.pageScrollTo({ scrollTop: index * this.data.monthHeight, duration: 0 });
+          this.setData({ scrollTop: index * this.data.monthHeight });
         }
       }
       return;
@@ -348,17 +349,14 @@ Page({
       correctionUntil = Date.now() + 300;
       this.setData({
         months,
+        scrollTop: (index >= 0 ? index : 0) * height,
         error: false,
       });
-      if (height > 0) {
-        wx.pageScrollTo({ scrollTop: (index >= 0 ? index : 0) * height, duration: 0 });
-      }
     } else {
       const adjust = (prependCount - pruneFront) * height;
       if (adjust !== 0) {
         correctionUntil = Date.now() + 300;
-        this.setData({ months, error: false });
-        wx.pageScrollTo({ scrollTop: lastScrollTop + adjust, duration: 0 });
+        this.setData({ months, scrollTop: lastScrollTop + adjust, error: false });
       } else {
         this.setData({ months, error: false });
       }
@@ -376,23 +374,27 @@ Page({
           const index = this.data.months.findIndex(
             (vm) => vm.key === keyOf(this.data.year, this.data.month),
           );
-          this.setData({ monthHeight: rect.height });
+          this.setData({
+            monthHeight: rect.height,
+            scrollTop: Math.max(0, index) * rect.height,
+          });
           correctionUntil = Date.now() + 300;
-          wx.pageScrollTo({ scrollTop: Math.max(0, index) * rect.height, duration: 0 });
         }
       })
       .exec();
   },
 
-  onPageScroll(event: { scrollTop: number }) {
+  onScroll(event: WechatMiniprogram.ScrollViewScroll) {
     // 定位修正生效期间忽略中间滚动事件，避免级联扩展
     if (Date.now() < correctionUntil) return;
-    lastScrollTop = event.scrollTop;
+    lastScrollTop = event.detail.scrollTop;
+    // 双向同步：避免受控 scroll-top 把用户滚动拉回旧位置
+    this.setData({ scrollTop: event.detail.scrollTop });
     const height = this.data.monthHeight;
     if (!height || this.data.months.length === 0) return;
     const topIndex = Math.max(
       0,
-      Math.min(this.data.months.length - 1, Math.floor(event.scrollTop / height)),
+      Math.min(this.data.months.length - 1, Math.floor(event.detail.scrollTop / height)),
     );
     const top = this.data.months[topIndex];
     if (!top) return;
