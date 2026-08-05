@@ -904,6 +904,7 @@ function diffDays(from, to) {
 async function scheduleRuleJobs(openid, payload) {
   var _a;
   await requireWorkspace(openid, payload.workspaceId);
+  if (getSubscribeTemplates().length === 0) return { scheduled: 0 };
   const userRes = await db.collection("users").doc(openid).get();
   const ruleId = (_a = userRes.data) == null ? void 0 : _a.activeRuleId;
   if (!ruleId) return { scheduled: 0 };
@@ -988,6 +989,7 @@ async function scheduleRuleJobs(openid, payload) {
 }
 async function rebuildJobs(openid, workspaceId, instance, prefs) {
   var _a, _b, _c, _d;
+  if (getSubscribeTemplates().length === 0) return;
   await db.collection("notificationJobs").where({ instanceId: instance._id, status: "pending" }).remove();
   if (!instance.startsAt) return;
   const holidayMap = await readHolidayRange(instance.businessDate, instance.businessDate);

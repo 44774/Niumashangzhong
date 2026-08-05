@@ -120,6 +120,7 @@ export async function scheduleRuleJobs(
   payload: { workspaceId: string },
 ): Promise<{ scheduled: number }> {
   await requireWorkspace(openid, payload.workspaceId);
+  if (getSubscribeTemplates().length === 0) return { scheduled: 0 };
   const userRes = await db.collection("users").doc(openid).get();
   const ruleId: string | undefined = userRes.data?.activeRuleId;
   if (!ruleId) return { scheduled: 0 };
@@ -219,6 +220,7 @@ export async function scheduleRuleJobs(
 }
 
 export async function rebuildJobs(openid: string, workspaceId: string, instance: any, prefs: any) {
+  if (getSubscribeTemplates().length === 0) return;
   await db
     .collection("notificationJobs")
     .where({ instanceId: instance._id, status: "pending" })

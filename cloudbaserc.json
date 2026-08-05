@@ -20,7 +20,14 @@
         "SUBSCRIBE_SHIFT_TEMPLATE_ID": "",
         "SUBSCRIBE_WEATHER_TEMPLATE_ID": "",
         "SUBSCRIBE_MINIPROGRAM_STATE": "developer"
-      }
+      },
+      "triggers": [
+        {
+          "name": "notify-timer",
+          "type": "timer",
+          "config": "0 */5 * * * * *"
+        }
+      ]
     }
   ]
 }
