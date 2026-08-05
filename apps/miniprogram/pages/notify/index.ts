@@ -13,6 +13,7 @@ Page({
   data: {
     prefs: {
       shiftReminders: [15],
+      endReminders: [],
       weatherEnabled: true,
       scheduleChangesEnabled: true,
       approvalEnabled: true,
@@ -24,6 +25,11 @@ Page({
       label: `${value} 分钟`,
       value,
       checked: true,
+    })),
+    endReminderOptions: REMINDER_CHOICES.map((value) => ({
+      label: `${value} 分钟`,
+      value,
+      checked: false,
     })),
     saving: false,
     loading: true,
@@ -64,9 +70,15 @@ Page({
         value,
         checked: prefs.shiftReminders.includes(value),
       }));
+      const endReminderOptions = REMINDER_CHOICES.map((value) => ({
+        label: `${value} 分钟`,
+        value,
+        checked: prefs.endReminders?.includes(value) ?? false,
+      }));
       this.setData({
         prefs,
         reminderOptions,
+        endReminderOptions,
         subscribeTemplates:
           SUBSCRIBE_TEMPLATE_IDS.length > 0 && templates.length === 0
             ? SUBSCRIBE_TEMPLATE_IDS.map((templateId, index) => ({
@@ -106,6 +118,18 @@ Page({
     this.setData({
       reminderOptions: options,
       prefs: { ...this.data.prefs, shiftReminders },
+    });
+  },
+
+  toggleEndReminder(event: WechatMiniprogram.TouchEvent) {
+    const value = Number(event.currentTarget.dataset.value);
+    const options = this.data.endReminderOptions.map((item) =>
+      item.value === value ? { ...item, checked: !item.checked } : item,
+    );
+    const endReminders = options.filter((item) => item.checked).map((item) => item.value);
+    this.setData({
+      endReminderOptions: options,
+      prefs: { ...this.data.prefs, endReminders },
     });
   },
 

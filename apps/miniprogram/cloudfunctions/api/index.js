@@ -823,6 +823,7 @@ function getSubscribeTemplates() {
 // apps/miniprogram/cloudfunctions/api/src/notify.ts
 var DEFAULTS = {
   shiftReminders: [15],
+  endReminders: [],
   weatherEnabled: true,
   scheduleChangesEnabled: true,
   approvalEnabled: true,
@@ -838,6 +839,7 @@ async function get2(openid, payload) {
       return {
         ...DEFAULTS,
         shiftReminders: res.data.shiftReminders ?? DEFAULTS.shiftReminders,
+        endReminders: res.data.endReminders ?? DEFAULTS.endReminders,
         weatherEnabled: res.data.weatherEnabled ?? DEFAULTS.weatherEnabled,
         scheduleChangesEnabled: res.data.scheduleChangesEnabled ?? DEFAULTS.scheduleChangesEnabled,
         approvalEnabled: res.data.approvalEnabled ?? DEFAULTS.approvalEnabled,
@@ -855,8 +857,10 @@ async function save(openid, payload) {
   await requireWorkspace(openid, payload.workspaceId);
   const prefs = payload.prefs ?? {};
   const shiftReminders = Array.isArray(prefs.shiftReminders) ? prefs.shiftReminders.filter((m) => Number.isInteger(m) && m >= 0 && m <= 10080).slice(0, 5) : [15];
+  const endReminders = Array.isArray(prefs.endReminders) ? prefs.endReminders.filter((m) => Number.isInteger(m) && m >= 0 && m <= 10080).slice(0, 5) : [];
   const saved = {
     shiftReminders,
+    endReminders,
     weatherEnabled: Boolean(prefs.weatherEnabled ?? true),
     scheduleChangesEnabled: Boolean(prefs.scheduleChangesEnabled ?? true),
     approvalEnabled: Boolean(prefs.approvalEnabled ?? true),
@@ -973,6 +977,27 @@ async function scheduleRuleJobs(openid, payload) {
       });
       scheduled += 1;
     }
+    for (const minutes of prefs.endReminders ?? []) {
+      const end = times.endsAt ? new Date(times.endsAt) : null;
+      if (!end) continue;
+      const triggerAt = new Date(end.getTime() - minutes * 6e4);
+      if (triggerAt.getTime() <= Date.now()) continue;
+      await db.collection("notificationJobs").add({
+        data: {
+          ruleId,
+          openid,
+          workspaceId: payload.workspaceId,
+          instanceId: `rule:${ruleId}:${date}`,
+          type: "end_reminder",
+          channel: "wechat_subscribe",
+          triggerAt: triggerAt.toISOString(),
+          payload: { ...basePayload, reminderMinutes: minutes },
+          status: "pending",
+          createdAt: now
+        }
+      });
+      scheduled += 1;
+    }
     if (prefs.weatherEnabled) {
       if (new Date(times.startsAt).getTime() <= Date.now()) continue;
       await db.collection("notificationJobs").add({
@@ -995,7 +1020,7 @@ async function scheduleRuleJobs(openid, payload) {
   return { scheduled };
 }
 async function rebuildJobs(openid, workspaceId, instance, prefs) {
-  var _a, _b, _c, _d;
+  var _a, _b, _c, _d, _e, _f, _g;
   if (getSubscribeTemplates().length === 0) return;
   await db.collection("notificationJobs").where({ instanceId: instance._id, status: "pending" }).remove();
   if (!instance.startsAt) return;
@@ -1027,6 +1052,32 @@ async function rebuildJobs(openid, workspaceId, instance, prefs) {
       }
     });
   }
+  for (const minutes of prefs.endReminders ?? []) {
+    if (!instance.endsAt) continue;
+    const triggerAt = new Date(new Date(instance.endsAt).getTime() - minutes * 6e4);
+    if (triggerAt.getTime() <= Date.now()) continue;
+    await db.collection("notificationJobs").add({
+      data: {
+        openid,
+        workspaceId,
+        instanceId: instance._id,
+        type: "end_reminder",
+        channel: "wechat_subscribe",
+        triggerAt: triggerAt.toISOString(),
+        payload: {
+          businessDate: instance.businessDate,
+          shiftName: (_d = instance.shiftSnapshot) == null ? void 0 : _d.name,
+          startTime: (_e = instance.shiftSnapshot) == null ? void 0 : _e.startTime,
+          endTime: (_f = instance.shiftSnapshot) == null ? void 0 : _f.endTime,
+          reminderMinutes: minutes,
+          version: instance.version,
+          overtime
+        },
+        status: "pending",
+        createdAt: nowIso()
+      }
+    });
+  }
   if (prefs.weatherEnabled) {
     const triggerTime = new Date(instance.startsAt);
     if (triggerTime.getTime() <= Date.now()) return;
@@ -1040,7 +1091,7 @@ async function rebuildJobs(openid, workspaceId, instance, prefs) {
         triggerAt: instance.startsAt,
         payload: {
           businessDate: instance.businessDate,
-          shiftName: (_d = instance.shiftSnapshot) == null ? void 0 : _d.name,
+          shiftName: (_g = instance.shiftSnapshot) == null ? void 0 : _g.name,
           version: instance.version,
           overtime
         },

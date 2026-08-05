@@ -576,6 +576,7 @@ export const api = {
   async notificationPreferences(): Promise<NotificationPreferences> {
     const prefs = read<NotificationPreferences>(LOCAL_PREFS_KEY, {
       shiftReminders: [15],
+      endReminders: [],
       weatherEnabled: true,
       scheduleChangesEnabled: true,
       approvalEnabled: true,

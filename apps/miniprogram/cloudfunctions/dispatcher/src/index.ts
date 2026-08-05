@@ -17,6 +17,9 @@ function templateFor(job: any): { templateId: string; name: string } | null {
   if (job.type === "shift_reminder") {
     return { templateId: SHIFT_TEMPLATE_ID, name: "上班提醒" };
   }
+  if (job.type === "end_reminder") {
+    return { templateId: SHIFT_TEMPLATE_ID, name: "下班提醒" };
+  }
   if (job.type === "weather_reminder") {
     return { templateId: WEATHER_TEMPLATE_ID || SHIFT_TEMPLATE_ID, name: "天气提醒" };
   }
@@ -34,6 +37,13 @@ function buildData(job: any) {
       thing3: {
         value: truncate(`提前${payload.reminderMinutes ?? 15}分钟上班${overtime}`, 20),
       },
+    };
+  }
+  if (job.type === "end_reminder") {
+    return {
+      thing1: { value: truncate("下班提醒") },
+      time2: { value: truncate(`${payload.businessDate ?? ""} ${payload.endTime ?? ""}`.trim(), 20) },
+      thing3: { value: truncate(`班次 ${payload.shiftName ?? ""}${overtime}`, 20) },
     };
   }
   return {

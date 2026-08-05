@@ -7,6 +7,7 @@ import { addDays, todayInTimezone } from "@workcal/schedule-engine";
 
 const DEFAULTS = {
   shiftReminders: [15],
+  endReminders: [],
   weatherEnabled: true,
   scheduleChangesEnabled: true,
   approvalEnabled: true,
@@ -23,6 +24,7 @@ export async function get(openid: string, payload: { workspaceId: string }) {
       return {
         ...DEFAULTS,
         shiftReminders: res.data.shiftReminders ?? DEFAULTS.shiftReminders,
+        endReminders: res.data.endReminders ?? DEFAULTS.endReminders,
         weatherEnabled: res.data.weatherEnabled ?? DEFAULTS.weatherEnabled,
         scheduleChangesEnabled:
           res.data.scheduleChangesEnabled ?? DEFAULTS.scheduleChangesEnabled,
@@ -45,8 +47,12 @@ export async function save(openid: string, payload: { workspaceId: string; prefs
   const shiftReminders = Array.isArray(prefs.shiftReminders)
     ? prefs.shiftReminders.filter((m: number) => Number.isInteger(m) && m >= 0 && m <= 10080).slice(0, 5)
     : [15];
+  const endReminders = Array.isArray(prefs.endReminders)
+    ? prefs.endReminders.filter((m: number) => Number.isInteger(m) && m >= 0 && m <= 10080).slice(0, 5)
+    : [];
   const saved = {
     shiftReminders,
+    endReminders,
     weatherEnabled: Boolean(prefs.weatherEnabled ?? true),
     scheduleChangesEnabled: Boolean(prefs.scheduleChangesEnabled ?? true),
     approvalEnabled: Boolean(prefs.approvalEnabled ?? true),
@@ -197,6 +203,27 @@ export async function scheduleRuleJobs(
       });
       scheduled += 1;
     }
+    for (const minutes of prefs.endReminders ?? []) {
+      const end = times.endsAt ? new Date(times.endsAt) : null;
+      if (!end) continue;
+      const triggerAt = new Date(end.getTime() - minutes * 60_000);
+      if (triggerAt.getTime() <= Date.now()) continue;
+      await db.collection("notificationJobs").add({
+        data: {
+          ruleId,
+          openid,
+          workspaceId: payload.workspaceId,
+          instanceId: `rule:${ruleId}:${date}`,
+          type: "end_reminder",
+          channel: "wechat_subscribe",
+          triggerAt: triggerAt.toISOString(),
+          payload: { ...basePayload, reminderMinutes: minutes },
+          status: "pending",
+          createdAt: now,
+        },
+      });
+      scheduled += 1;
+    }
     if (prefs.weatherEnabled) {
       if (new Date(times.startsAt).getTime() <= Date.now()) continue;
       await db.collection("notificationJobs").add({
@@ -241,6 +268,32 @@ export async function rebuildJobs(openid: string, workspaceId: string, instance:
         workspaceId,
         instanceId: instance._id,
         type: "shift_reminder",
+        channel: "wechat_subscribe",
+        triggerAt: triggerAt.toISOString(),
+        payload: {
+          businessDate: instance.businessDate,
+          shiftName: instance.shiftSnapshot?.name,
+          startTime: instance.shiftSnapshot?.startTime,
+          endTime: instance.shiftSnapshot?.endTime,
+          reminderMinutes: minutes,
+          version: instance.version,
+          overtime,
+        },
+        status: "pending",
+        createdAt: nowIso(),
+      },
+    });
+  }
+  for (const minutes of prefs.endReminders ?? []) {
+    if (!instance.endsAt) continue;
+    const triggerAt = new Date(new Date(instance.endsAt).getTime() - minutes * 60_000);
+    if (triggerAt.getTime() <= Date.now()) continue;
+    await db.collection("notificationJobs").add({
+      data: {
+        openid,
+        workspaceId,
+        instanceId: instance._id,
+        type: "end_reminder",
         channel: "wechat_subscribe",
         triggerAt: triggerAt.toISOString(),
         payload: {

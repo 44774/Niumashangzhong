@@ -18,6 +18,20 @@
   </view>
 
   <view class="card">
+    <text class="title-card">下班提醒</text>
+    <text class="card-desc">提前多长时间提醒（可多选，不选则不提醒）</text>
+    <view class="reminder-options">
+      <view
+        wx:for="{{endReminderOptions}}"
+        wx:key="value"
+        class="reminder-option {{item.checked ? 'checked' : ''}}"
+        data-value="{{item.value}}"
+        bindtap="toggleEndReminder"
+      >{{item.label}}</view>
+    </view>
+  </view>
+
+  <view class="card">
     <view class="row-between switch-row">
       <view>
         <text class="switch-title">天气提醒</text>
@@ -56,7 +70,7 @@
 
   <view class="card">
     <text class="title-card">微信订阅消息</text>
-    <text class="card-desc">授权后可在上班前收到提醒；一次性订阅消息在发送后需要重新订阅</text>
+    <text class="card-desc">授权后可在上班/下班前收到提醒；一次性订阅消息在发送后需要重新订阅</text>
     <view wx:for="{{subscribeTemplates}}" wx:key="key" class="subscribe-row">
       <text>{{item.name}}</text>
       <text class="subscribe-row-status">{{subscriptionStatus[item.templateId] || '未授权'}}</text>

@@ -37,6 +37,9 @@ function templateFor(job) {
   if (job.type === "shift_reminder") {
     return { templateId: SHIFT_TEMPLATE_ID, name: "\u4E0A\u73ED\u63D0\u9192" };
   }
+  if (job.type === "end_reminder") {
+    return { templateId: SHIFT_TEMPLATE_ID, name: "\u4E0B\u73ED\u63D0\u9192" };
+  }
   if (job.type === "weather_reminder") {
     return { templateId: WEATHER_TEMPLATE_ID || SHIFT_TEMPLATE_ID, name: "\u5929\u6C14\u63D0\u9192" };
   }
@@ -53,6 +56,13 @@ function buildData(job) {
       thing3: {
         value: truncate(`\u63D0\u524D${payload.reminderMinutes ?? 15}\u5206\u949F\u4E0A\u73ED${overtime}`, 20)
       }
+    };
+  }
+  if (job.type === "end_reminder") {
+    return {
+      thing1: { value: truncate("\u4E0B\u73ED\u63D0\u9192") },
+      time2: { value: truncate(`${payload.businessDate ?? ""} ${payload.endTime ?? ""}`.trim(), 20) },
+      thing3: { value: truncate(`\u73ED\u6B21 ${payload.shiftName ?? ""}${overtime}`, 20) }
     };
   }
   return {

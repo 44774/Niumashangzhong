@@ -231,6 +231,7 @@ export interface WeatherForecast {
 
 export interface NotificationPreferences {
   shiftReminders: number[];
+  endReminders?: number[];
   weatherEnabled: boolean;
   scheduleChangesEnabled: boolean;
   approvalEnabled: boolean;

@@ -118,6 +118,7 @@ tcb fn deploy dispatcher   # 部署通知定时器
   （仓库当前已配置 `PPRLh5y2F-_DVDDB-fpMxD5UKcnEqs1FzsZgWk4NZ6Y`，换账号发布时改为自己的模板 ID）→
   重新部署 `api` 与 `dispatcher` → 小程序「提醒」页点击「订阅提醒」。
   如日后有专用天气模板，可再填 `SUBSCRIBE_WEATHER_TEMPLATE_ID` 覆盖。
+- 下班提醒：提醒设置页可分别配置上班/下班提前提醒分钟数（多选），与上班提醒共用同一个订阅模板。
   一次性订阅消息发送后会失效，需再次订阅；开发环境用 `SUBSCRIBE_MINIPROGRAM_STATE=developer`，发布后改为 `formal`。
   若所选模板字段不是 `thing1/time2/thing3`，需同步调整
   `apps/miniprogram/cloudfunctions/dispatcher/src/index.ts` 的 `buildData`。
