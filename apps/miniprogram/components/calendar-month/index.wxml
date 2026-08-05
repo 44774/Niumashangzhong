@@ -6,7 +6,7 @@
     <view
       wx:for="{{cells}}"
       wx:key="date"
-      class="day-cell {{item.inMonth ? '' : 'dim'}} {{item.isToday ? 'today' : ''}} {{item.date === selectedDate ? 'selected' : ''}}"
+      class="day-cell {{item.hasShift ? '' : 'empty'}} {{item.inMonth ? '' : 'dim'}} {{item.isToday ? 'today' : ''}} {{item.date === selectedDate ? 'selected' : ''}}"
       data-date="{{item.date}}"
       bindtap="onTap"
       bindlongpress="onLongPress"

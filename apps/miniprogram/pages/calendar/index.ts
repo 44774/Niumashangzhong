@@ -96,7 +96,7 @@ Page({
       month,
       monthLabel: monthLabel(year, month),
       monthValue: `${year}-${pad2(month)}`,
-      cells: buildMonthGrid(year, month, today),
+      cells: buildMonthGrid(year, month, today).map((cell) => ({ ...cell, hasShift: false })),
       selectedDate: today,
       showBackToday: false,
     });
@@ -189,6 +189,7 @@ Page({
     const cells = this.data.cells.map((cell) => ({
       ...cell,
       hasChange: changeSet.has(cell.date),
+      hasShift: Boolean((data.shiftMap[cell.date] ?? []).length),
     }));
     this.setData({
       shiftMap: data.shiftMap,
@@ -238,7 +239,7 @@ Page({
       month,
       monthLabel: monthLabel(year, month),
       monthValue: `${year}-${pad2(month)}`,
-      cells: buildMonthGrid(year, month, today),
+      cells: buildMonthGrid(year, month, today).map((cell) => ({ ...cell, hasShift: false })),
     });
     this.load();
   },
@@ -253,7 +254,7 @@ Page({
       month: m,
       monthLabel: monthLabel(y, m),
       monthValue: `${y}-${pad2(m)}`,
-      cells: buildMonthGrid(y, m, today),
+      cells: buildMonthGrid(y, m, today).map((cell) => ({ ...cell, hasShift: false })),
     });
     this.load();
   },

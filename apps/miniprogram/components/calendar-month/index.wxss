@@ -37,6 +37,10 @@
   position: relative;
 }
 
+.day-cell.empty {
+  justify-content: center;
+}
+
 .day-number {
   font-size: 28rpx;
   line-height: 48rpx;
@@ -44,6 +48,13 @@
   height: 48rpx;
   text-align: center;
   border-radius: 50%;
+}
+
+.day-cell.empty .day-number {
+  font-size: 36rpx;
+  line-height: 56rpx;
+  width: 56rpx;
+  height: 56rpx;
 }
 
 .change-mark {
