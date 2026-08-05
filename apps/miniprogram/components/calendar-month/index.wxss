@@ -1,3 +1,24 @@
+.calendar {
+  background: var(--wc-color-surface-card);
+  border-radius: var(--wc-radius-lg);
+  padding: 24rpx 16rpx;
+  box-shadow: var(--wc-shadow-sm);
+}
+
+.week-header {
+  display: flex;
+  margin-bottom: 12rpx;
+}
+
+.week-cell {
+  flex: 1;
+  text-align: center;
+  color: var(--wc-color-text-tertiary);
+  font-size: 24rpx;
+  height: 56rpx;
+  line-height: 56rpx;
+}
+
 .grid {
   display: flex;
   flex-wrap: wrap;
@@ -114,8 +135,51 @@
   }
 }
 
+.legend-sk {
+  width: 96rpx;
+  height: 28rpx;
+  border-radius: 8rpx;
+  background: var(--wc-color-surface-subtle);
+  position: relative;
+  overflow: hidden;
+}
+
+.legend-sk::after {
+  content: "";
+  position: absolute;
+  left: -100%;
+  top: 0;
+  height: 100%;
+  width: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.65), transparent);
+  animation: cell-sk-shimmer 1.3s infinite;
+}
+
 .ot-tag {
   margin-left: 4rpx;
   color: var(--wc-color-semantic-danger);
   font-weight: 700;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24rpx;
+  margin-top: 20rpx;
+  padding-top: 20rpx;
+  border-top: 1rpx solid var(--wc-color-border-default);
+}
+
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8rpx;
+  font-size: 24rpx;
+  color: var(--wc-color-text-secondary);
+}
+
+.legend-dot {
+  width: 22rpx;
+  height: 22rpx;
+  border-radius: 50%;
 }
