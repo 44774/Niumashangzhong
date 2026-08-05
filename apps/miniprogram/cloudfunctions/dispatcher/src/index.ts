@@ -46,6 +46,16 @@ function buildData(job: any) {
 async function sendJob(job: any, db: any): Promise<boolean> {
   const tpl = templateFor(job);
   const now = new Date().toISOString();
+  if (job.ruleId) {
+    const ruleRes = await db.collection("scheduleRules").doc(job.ruleId).get();
+    const rule = ruleRes.data;
+    if (!rule || rule.isActive === false) {
+      await db.collection("notificationJobs").doc(job._id).update({
+        data: { status: "cancelled", errorMessage: "排班表已删除或停用", processedAt: now },
+      });
+      return false;
+    }
+  }
   if (!tpl || !tpl.templateId) {
     await db.collection("notificationJobs").doc(job._id).update({
       data: { status: "failed", errorMessage: "订阅消息模板未配置", processedAt: now },

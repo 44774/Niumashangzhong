@@ -894,6 +894,98 @@ async function subscribe(openid, payload) {
   });
   return { saved: subscriptions.length };
 }
+function diffDays(from, to) {
+  const [fy, fm, fd] = from.split("-").map(Number);
+  const [ty, tm, td] = to.split("-").map(Number);
+  return Math.round(
+    (Date.UTC(ty ?? 0, (tm ?? 1) - 1, td ?? 1) - Date.UTC(fy ?? 0, (fm ?? 1) - 1, fd ?? 1)) / 864e5
+  );
+}
+async function scheduleRuleJobs(openid, payload) {
+  var _a;
+  await requireWorkspace(openid, payload.workspaceId);
+  const userRes = await db.collection("users").doc(openid).get();
+  const ruleId = (_a = userRes.data) == null ? void 0 : _a.activeRuleId;
+  if (!ruleId) return { scheduled: 0 };
+  const ruleRes = await db.collection("scheduleRules").doc(ruleId).get();
+  const rule = ruleRes.data;
+  if (!rule || rule.isActive === false || rule.ownerOpenid !== openid || rule.workspaceId !== payload.workspaceId) {
+    return { scheduled: 0 };
+  }
+  const tplRes = await db.collection("shiftTemplates").where({ workspaceId: payload.workspaceId, isActive: true }).limit(50).get();
+  const tplById = new Map(tplRes.data.map((t) => [t._id, t]));
+  const prefs = await get2(openid, payload);
+  const timezone = rule.timezone || "Asia/Shanghai";
+  const today = todayInTimezone(timezone);
+  const horizon = Math.min(30, Math.max(7, rule.generationHorizonDays ?? 30));
+  const now = nowIso();
+  await db.collection("notificationJobs").where({ ruleId, status: "pending" }).remove();
+  let scheduled = 0;
+  for (let i = 0; i < horizon; i += 1) {
+    const date = addDays(today, i);
+    if (rule.endDate && date > rule.endDate) break;
+    const offset = diffDays(rule.startDate, date);
+    if (offset < 0) continue;
+    const sequence = rule.sequence ?? [];
+    if (sequence.length === 0) break;
+    const item = sequence[offset % sequence.length];
+    const tpl = item ? tplById.get(item.shiftTemplateId) : void 0;
+    if (!tpl) continue;
+    const snap = snapshotFromTemplate(tpl);
+    const times = instanceTimes(date, snap, timezone);
+    if (!times.startsAt) continue;
+    const holidayMap = await readHolidayRange(date, date);
+    const overtime = prefs.holidayOvertimeEnabled !== false && snap.kind !== "rest" && holidayMap[date] === "holiday";
+    const start = new Date(times.startsAt);
+    const basePayload = {
+      businessDate: date,
+      shiftName: snap.name,
+      startTime: snap.startTime,
+      endTime: snap.endTime,
+      version: rule.version,
+      overtime,
+      ruleId
+    };
+    for (const minutes of prefs.shiftReminders ?? []) {
+      const triggerAt = new Date(start.getTime() - minutes * 6e4);
+      if (triggerAt.getTime() <= Date.now()) continue;
+      await db.collection("notificationJobs").add({
+        data: {
+          ruleId,
+          openid,
+          workspaceId: payload.workspaceId,
+          instanceId: `rule:${ruleId}:${date}`,
+          type: "shift_reminder",
+          channel: "wechat_subscribe",
+          triggerAt: triggerAt.toISOString(),
+          payload: { ...basePayload, reminderMinutes: minutes },
+          status: "pending",
+          createdAt: now
+        }
+      });
+      scheduled += 1;
+    }
+    if (prefs.weatherEnabled) {
+      if (new Date(times.startsAt).getTime() <= Date.now()) continue;
+      await db.collection("notificationJobs").add({
+        data: {
+          ruleId,
+          openid,
+          workspaceId: payload.workspaceId,
+          instanceId: `rule:${ruleId}:${date}`,
+          type: "weather_reminder",
+          channel: "wechat_subscribe",
+          triggerAt: times.startsAt,
+          payload: { ...basePayload },
+          status: "pending",
+          createdAt: now
+        }
+      });
+      scheduled += 1;
+    }
+  }
+  return { scheduled };
+}
 async function rebuildJobs(openid, workspaceId, instance, prefs) {
   var _a, _b, _c, _d;
   await db.collection("notificationJobs").where({ instanceId: instance._id, status: "pending" }).remove();
@@ -927,6 +1019,8 @@ async function rebuildJobs(openid, workspaceId, instance, prefs) {
     });
   }
   if (prefs.weatherEnabled) {
+    const triggerTime = new Date(instance.startsAt);
+    if (triggerTime.getTime() <= Date.now()) return;
     await db.collection("notificationJobs").add({
       data: {
         openid,
@@ -1312,6 +1406,7 @@ async function removeRule(openid, workspaceId, ruleId) {
     data: { isActive: false, updatedAt: nowIso() }
   });
   await db.collection("scheduleInstances").where({ sourceRuleId: ruleId }).remove();
+  await db.collection("notificationJobs").where({ ruleId, status: "pending" }).remove();
   const userRes = await db.collection("users").doc(openid).get();
   if (((_a = userRes.data) == null ? void 0 : _a.activeRuleId) === ruleId) {
     await db.collection("users").doc(openid).update({
@@ -1577,6 +1672,8 @@ exports.main = async (event) => {
         return ok(templates());
       case "notify.subscribe":
         return ok(await subscribe(openid, payload));
+      case "notify.scheduleRuleJobs":
+        return ok(await scheduleRuleJobs(openid, payload));
       case "share.create":
         return ok(await create4(openid, payload));
       default:

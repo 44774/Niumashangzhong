@@ -167,6 +167,10 @@ export const api = {
     return ws<{ saved: number }>("notify.subscribe", { subscriptions });
   },
 
+  async scheduleRuleJobs(): Promise<{ scheduled: number }> {
+    return ws<{ scheduled: number }>("notify.scheduleRuleJobs", {});
+  },
+
   async createShareSnapshot(input: ShareSnapshotInput): Promise<ShareSnapshot> {
     return ws<ShareSnapshot>("share.create", { ...input });
   },

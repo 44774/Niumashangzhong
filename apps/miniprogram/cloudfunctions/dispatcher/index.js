@@ -64,6 +64,16 @@ function buildData(job) {
 async function sendJob(job, db) {
   const tpl = templateFor(job);
   const now = (/* @__PURE__ */ new Date()).toISOString();
+  if (job.ruleId) {
+    const ruleRes = await db.collection("scheduleRules").doc(job.ruleId).get();
+    const rule = ruleRes.data;
+    if (!rule || rule.isActive === false) {
+      await db.collection("notificationJobs").doc(job._id).update({
+        data: { status: "cancelled", errorMessage: "\u6392\u73ED\u8868\u5DF2\u5220\u9664\u6216\u505C\u7528", processedAt: now }
+      });
+      return false;
+    }
+  }
   if (!tpl || !tpl.templateId) {
     await db.collection("notificationJobs").doc(job._id).update({
       data: { status: "failed", errorMessage: "\u8BA2\u9605\u6D88\u606F\u6A21\u677F\u672A\u914D\u7F6E", processedAt: now }

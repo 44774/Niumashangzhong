@@ -130,6 +130,10 @@ export const api = {
     return Promise.resolve({ saved: 0 });
   },
 
+  scheduleRuleJobs(): Promise<{ scheduled: number }> {
+    return Promise.resolve({ scheduled: 0 });
+  },
+
   createShareSnapshot(input: ShareSnapshotInput): Promise<ShareSnapshot> {
     return request("/share-snapshots", { method: "POST", data: input });
   },

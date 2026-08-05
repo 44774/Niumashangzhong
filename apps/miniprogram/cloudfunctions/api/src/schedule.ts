@@ -429,6 +429,7 @@ export async function removeRule(openid: string, workspaceId: string, ruleId: st
   });
   // 规则不再生成实例；历史遗留的规则实例一并移除
   await db.collection("scheduleInstances").where({ sourceRuleId: ruleId }).remove();
+  await db.collection("notificationJobs").where({ ruleId, status: "pending" }).remove();
   const userRes = await db.collection("users").doc(openid).get();
   if (userRes.data?.activeRuleId === ruleId) {
     await db.collection("users").doc(openid).update({

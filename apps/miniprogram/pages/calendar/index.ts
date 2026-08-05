@@ -23,9 +23,12 @@ import {
   setCalendarWindow,
   type CalendarWindowData,
 } from "../../services/calendar-cache";
+import { getActiveRuleCache } from "../../services/meta-cache";
 import { getWeatherCached } from "../../services/weather-cache";
 import type { WeatherForecast } from "../../typings/api";
 import { hasAgreedPrivacyAgreement } from "../../utils/privacy-agreement";
+
+let lastScheduledRuleKey = "";
 
 Page({
   data: {
@@ -144,6 +147,15 @@ Page({
       };
       setCalendarWindow(this.data.year, this.data.month, windowData);
       this.applyWindow(windowData);
+      // 当前排班表变化时，云端按规则预生成订阅消息提醒任务
+      const activeRule = getActiveRuleCache();
+      const activeKey = activeRule ? `${activeRule.id}:${activeRule.version}` : "";
+      if (activeKey && activeKey !== lastScheduledRuleKey) {
+        lastScheduledRuleKey = activeKey;
+        void api.scheduleRuleJobs().catch(() => {
+          // 提醒任务生成失败不影响排班展示
+        });
+      }
       this.setData({
         scheduleList: schedules,
         selectedSummary,

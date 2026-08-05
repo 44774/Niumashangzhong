@@ -605,6 +605,10 @@ export const api = {
     return { saved: subscriptions.length };
   },
 
+  async scheduleRuleJobs(): Promise<{ scheduled: number }> {
+    return { scheduled: 0 };
+  },
+
   async createShareSnapshot(input: ShareSnapshotInput): Promise<ShareSnapshot> {
     const privacy = {
       showDisplayName: Boolean(input.privacyOptions?.showDisplayName),
