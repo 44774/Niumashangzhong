@@ -23,7 +23,7 @@
 }
 
 .tab-item.active {
-  color: #0F2B4D;
+  color: #ffffff;
   font-weight: 600;
 }
 
@@ -37,5 +37,5 @@
 }
 
 .tab-item.active .tab-label {
-  background: #38BDF8;
+  background: #3E80ED;
 }
