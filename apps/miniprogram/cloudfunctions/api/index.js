@@ -28,6 +28,100 @@ var import_wx_server_sdk2 = __toESM(require("wx-server-sdk"));
 // apps/miniprogram/cloudfunctions/api/src/db.ts
 var import_wx_server_sdk = __toESM(require("wx-server-sdk"));
 
+// packages/schedule-engine/dist/time.js
+var DAY_MINUTES = 24 * 60;
+function toMinutes(time) {
+  const match = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(time);
+  if (!match) {
+    throw new Error(`\u975E\u6CD5\u65F6\u95F4\u683C\u5F0F: ${time}`);
+  }
+  return Number(match[1]) * 60 + Number(match[2]);
+}
+function addDays(date, days) {
+  const d = parseDate(date);
+  d.setUTCDate(d.getUTCDate() + days);
+  return toDateString(d);
+}
+function parseDate(date) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date);
+  if (!match) {
+    throw new Error(`\u975E\u6CD5\u65E5\u671F: ${date}`);
+  }
+  return new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])));
+}
+function toDateString(d) {
+  return d.toISOString().slice(0, 10);
+}
+function todayInTimezone(timezone) {
+  const now = /* @__PURE__ */ new Date();
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  }).formatToParts(now);
+  const get3 = (type) => {
+    var _a;
+    return ((_a = parts.find((p) => p.type === type)) == null ? void 0 : _a.value) ?? "";
+  };
+  return `${get3("year")}-${get3("month")}-${get3("day")}`;
+}
+function zonedTimeToIso(businessDate, time, timezone) {
+  const offsetMinutes = timezoneOffsetMinutes(businessDate, timezone);
+  const date = parseDate(businessDate);
+  const minutes = toMinutes(time);
+  const utc = new Date(date.getTime() + (minutes - offsetMinutes) * 6e4);
+  return utc.toISOString();
+}
+function timezoneOffsetMinutes(date, timezone) {
+  try {
+    const probe = /* @__PURE__ */ new Date(`${date}T12:00:00Z`);
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: timezone,
+      hour12: false,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit"
+    }).formatToParts(probe);
+    const get3 = (type) => {
+      var _a;
+      return Number(((_a = parts.find((p) => p.type === type)) == null ? void 0 : _a.value) ?? 0);
+    };
+    const local = new Date(Date.UTC(get3("year"), get3("month") - 1, get3("day"), get3("hour") % 24, get3("minute"), get3("second")));
+    return (local.getTime() - probe.getTime()) / 6e4;
+  } catch {
+    return 480;
+  }
+}
+
+// packages/schedule-engine/dist/conflict.js
+function intervalsOverlap(a, b) {
+  if (!a.startsAt || !a.endsAt || !b.startsAt || !b.endsAt)
+    return false;
+  if (a.kind === "rest" || b.kind === "rest")
+    return false;
+  const aStart = new Date(a.startsAt).getTime();
+  const aEnd = new Date(a.endsAt).getTime();
+  const bStart = new Date(b.startsAt).getTime();
+  const bEnd = new Date(b.endsAt).getTime();
+  return aStart < bEnd && bStart < aEnd;
+}
+function findOverlapConflicts(candidate, existing) {
+  const result = [];
+  for (const item of existing) {
+    if (item.id !== candidate.id && intervalsOverlap(candidate, item)) {
+      result.push({
+        existingId: item.id,
+        message: `\u8BE5\u65F6\u6BB5\u4E0E ${item.id} \u91CD\u53E0`
+      });
+    }
+  }
+  return result;
+}
+
 // apps/miniprogram/cloudfunctions/api/src/util.ts
 var CloudError = class extends Error {
   constructor(code, message, statusCode = 400) {
@@ -129,6 +223,7 @@ async function ensureUserAndWorkspace(openid, displayName, avatarUrl) {
       openid,
       displayName: (displayName == null ? void 0 : displayName.trim()) || "\u5FAE\u4FE1\u7528\u6237",
       avatarUrl: avatarUrl ?? null,
+      activeRuleId: null,
       defaultCity: "\u6DF1\u5733",
       timezone: "Asia/Shanghai",
       createdAt: now,
@@ -198,8 +293,42 @@ async function ensureUserAndWorkspace(openid, displayName, avatarUrl) {
         }
       });
     }
+    const defaultRuleId = await ensureDefaultRule(openid, workspace);
+    if (defaultRuleId) {
+      user = { ...user, activeRuleId: defaultRuleId };
+    }
   }
   return { user, workspace };
+}
+async function ensureDefaultRule(openid, workspace) {
+  const rulesRes = await db.collection("scheduleRules").where({ workspaceId: workspace._id, ownerOpenid: openid, isActive: true }).limit(1).get();
+  if (rulesRes.data.length > 0) return null;
+  const instancesRes = await db.collection("scheduleInstances").where({ workspaceId: workspace._id, ownerOpenid: openid }).limit(1).get();
+  if (instancesRes.data.length > 0) return null;
+  const templatesRes = await db.collection("shiftTemplates").where({ workspaceId: workspace._id, isActive: true }).orderBy("sortOrder", "asc").limit(20).get();
+  if (templatesRes.data.length === 0) return null;
+  const now = nowIso();
+  const added = await db.collection("scheduleRules").add({
+    data: {
+      workspaceId: workspace._id,
+      ownerOpenid: openid,
+      name: "\u521D\u59CB\u6392\u73ED\u8868",
+      startDate: todayInTimezone(workspace.timezone),
+      endDate: null,
+      sequence: templatesRes.data.map((t) => ({ shiftTemplateId: t._id })),
+      timezone: workspace.timezone,
+      generationHorizonDays: 90,
+      isActive: true,
+      version: 1,
+      createdAt: now,
+      updatedAt: now
+    }
+  });
+  const ruleId = added._id;
+  await db.collection("users").doc(openid).update({
+    data: { activeRuleId: ruleId, updatedAt: now }
+  });
+  return ruleId;
 }
 async function requireWorkspace(openid, workspaceId) {
   if (!workspaceId) {
@@ -392,100 +521,6 @@ async function update(openid, input) {
     name: input.name
   });
   return toShiftTemplate(doc.data);
-}
-
-// packages/schedule-engine/dist/time.js
-var DAY_MINUTES = 24 * 60;
-function toMinutes(time) {
-  const match = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(time);
-  if (!match) {
-    throw new Error(`\u975E\u6CD5\u65F6\u95F4\u683C\u5F0F: ${time}`);
-  }
-  return Number(match[1]) * 60 + Number(match[2]);
-}
-function addDays(date, days) {
-  const d = parseDate(date);
-  d.setUTCDate(d.getUTCDate() + days);
-  return toDateString(d);
-}
-function parseDate(date) {
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date);
-  if (!match) {
-    throw new Error(`\u975E\u6CD5\u65E5\u671F: ${date}`);
-  }
-  return new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])));
-}
-function toDateString(d) {
-  return d.toISOString().slice(0, 10);
-}
-function todayInTimezone(timezone) {
-  const now = /* @__PURE__ */ new Date();
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: timezone,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit"
-  }).formatToParts(now);
-  const get3 = (type) => {
-    var _a;
-    return ((_a = parts.find((p) => p.type === type)) == null ? void 0 : _a.value) ?? "";
-  };
-  return `${get3("year")}-${get3("month")}-${get3("day")}`;
-}
-function zonedTimeToIso(businessDate, time, timezone) {
-  const offsetMinutes = timezoneOffsetMinutes(businessDate, timezone);
-  const date = parseDate(businessDate);
-  const minutes = toMinutes(time);
-  const utc = new Date(date.getTime() + (minutes - offsetMinutes) * 6e4);
-  return utc.toISOString();
-}
-function timezoneOffsetMinutes(date, timezone) {
-  try {
-    const probe = /* @__PURE__ */ new Date(`${date}T12:00:00Z`);
-    const parts = new Intl.DateTimeFormat("en-US", {
-      timeZone: timezone,
-      hour12: false,
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit"
-    }).formatToParts(probe);
-    const get3 = (type) => {
-      var _a;
-      return Number(((_a = parts.find((p) => p.type === type)) == null ? void 0 : _a.value) ?? 0);
-    };
-    const local = new Date(Date.UTC(get3("year"), get3("month") - 1, get3("day"), get3("hour") % 24, get3("minute"), get3("second")));
-    return (local.getTime() - probe.getTime()) / 6e4;
-  } catch {
-    return 480;
-  }
-}
-
-// packages/schedule-engine/dist/conflict.js
-function intervalsOverlap(a, b) {
-  if (!a.startsAt || !a.endsAt || !b.startsAt || !b.endsAt)
-    return false;
-  if (a.kind === "rest" || b.kind === "rest")
-    return false;
-  const aStart = new Date(a.startsAt).getTime();
-  const aEnd = new Date(a.endsAt).getTime();
-  const bStart = new Date(b.startsAt).getTime();
-  const bEnd = new Date(b.endsAt).getTime();
-  return aStart < bEnd && bStart < aEnd;
-}
-function findOverlapConflicts(candidate, existing) {
-  const result = [];
-  for (const item of existing) {
-    if (item.id !== candidate.id && intervalsOverlap(candidate, item)) {
-      result.push({
-        existingId: item.id,
-        message: `\u8BE5\u65F6\u6BB5\u4E0E ${item.id} \u91CD\u53E0`
-      });
-    }
-  }
-  return result;
 }
 
 // apps/miniprogram/cloudfunctions/api/src/weather.ts
@@ -1398,43 +1433,9 @@ async function create4(openid, payload) {
 
 // apps/miniprogram/cloudfunctions/api/src/seed.ts
 async function seedDemo(openid) {
-  const { user, workspace } = await ensureUserAndWorkspace(openid, "\u5F20\u5C0F\u660E");
-  const templatesRes = await db.collection("shiftTemplates").where({ workspaceId: workspace._id, isActive: true }).orderBy("sortOrder", "asc").limit(10).get();
-  const templates = templatesRes.data;
-  const today = todayInTimezone(workspace.timezone);
-  const plan = [0, 1, 2, 3, 0, 1, 3];
-  let created = 0;
-  for (let i = 0; i < plan.length; i += 1) {
-    const date = addDays(today, i);
-    const exists = await db.collection("scheduleInstances").where({ workspaceId: workspace._id, ownerOpenid: openid, businessDate: date }).limit(1).get();
-    if (exists.data.length > 0) continue;
-    const tpl = templates[plan[i]];
-    if (!tpl) continue;
-    const snap = snapshotFromTemplate(tpl);
-    const times = instanceTimes(date, snap, workspace.timezone);
-    await db.collection("scheduleInstances").add({
-      data: {
-        workspaceId: workspace._id,
-        ownerOpenid: openid,
-        businessDate: date,
-        timezone: workspace.timezone,
-        startsAt: times.startsAt,
-        endsAt: times.endsAt,
-        kind: snap.kind,
-        shiftSnapshot: snap,
-        locationSnapshot: null,
-        note: null,
-        status: "scheduled",
-        source: "manual",
-        version: 1,
-        history: [],
-        createdAt: nowIso(),
-        updatedAt: nowIso()
-      }
-    });
-    created += 1;
-  }
-  return { user: toUser(user), workspace: toWorkspace(workspace), created };
+  const { user, workspace } = await ensureUserAndWorkspace(openid);
+  await ensureDefaultRule(openid, workspace);
+  return { user: toUser(user), workspace: toWorkspace(workspace), created: 0 };
 }
 
 // apps/miniprogram/cloudfunctions/api/src/user.ts

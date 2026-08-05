@@ -1,4 +1,5 @@
 import cloud from "wx-server-sdk";
+import { todayInTimezone } from "@workcal/schedule-engine";
 import { CloudError, docId, nowIso } from "./util";
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV as unknown as string });
@@ -88,6 +89,7 @@ export interface UserDoc {
   openid: string;
   displayName: string;
   avatarUrl: string | null;
+  activeRuleId: string | null;
   defaultCity: string;
   timezone: string;
   createdAt: string;
@@ -123,6 +125,7 @@ export async function ensureUserAndWorkspace(
       openid,
       displayName: displayName?.trim() || "微信用户",
       avatarUrl: avatarUrl ?? null,
+      activeRuleId: null,
       defaultCity: "深圳",
       timezone: "Asia/Shanghai",
       createdAt: now,
@@ -200,8 +203,62 @@ export async function ensureUserAndWorkspace(
         },
       });
     }
+    // 新用户首次登录：创建“初始排班表”规则，班次由小程序端本地计算，不落库
+    const defaultRuleId = await ensureDefaultRule(openid, workspace);
+    if (defaultRuleId) {
+      user = { ...user, activeRuleId: defaultRuleId };
+    }
   }
   return { user, workspace };
+}
+
+/** 用户没有任何排班表时创建一个初始排班表（幂等：已有规则则不创建） */
+export async function ensureDefaultRule(
+  openid: string,
+  workspace: WorkspaceDoc,
+): Promise<string | null> {
+  const rulesRes = await db
+    .collection("scheduleRules")
+    .where({ workspaceId: workspace._id, ownerOpenid: openid, isActive: true })
+    .limit(1)
+    .get();
+  if (rulesRes.data.length > 0) return null;
+  // 强隔离：账号已存在任何排班实例时，不注入初始规则，避免污染用户数据
+  const instancesRes = await db
+    .collection("scheduleInstances")
+    .where({ workspaceId: workspace._id, ownerOpenid: openid })
+    .limit(1)
+    .get();
+  if (instancesRes.data.length > 0) return null;
+  const templatesRes = await db
+    .collection("shiftTemplates")
+    .where({ workspaceId: workspace._id, isActive: true })
+    .orderBy("sortOrder", "asc")
+    .limit(20)
+    .get();
+  if (templatesRes.data.length === 0) return null;
+  const now = nowIso();
+  const added = await db.collection("scheduleRules").add({
+    data: {
+      workspaceId: workspace._id,
+      ownerOpenid: openid,
+      name: "初始排班表",
+      startDate: todayInTimezone(workspace.timezone),
+      endDate: null,
+      sequence: templatesRes.data.map((t: any) => ({ shiftTemplateId: t._id })),
+      timezone: workspace.timezone,
+      generationHorizonDays: 90,
+      isActive: true,
+      version: 1,
+      createdAt: now,
+      updatedAt: now,
+    },
+  });
+  const ruleId = added._id as string;
+  await db.collection("users").doc(openid).update({
+    data: { activeRuleId: ruleId, updatedAt: now },
+  });
+  return ruleId;
 }
 
 export async function requireWorkspace(openid: string, workspaceId: string): Promise<void> {

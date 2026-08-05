@@ -325,6 +325,12 @@ export const api = {
 
   async createRule(input: ScheduleRuleInput): Promise<ScheduleRuleCreateResult> {
     const docs = read<LocalInstance[]>(LOCAL_SCHEDULES_KEY, []);
+    const templates = ensureTemplates();
+    for (const s of input.sequence) {
+      if (!s.shiftTemplateId || !templates.some((t) => t.id === s.shiftTemplateId)) {
+        throw new ApiError(400, "VALIDATION_ERROR", "班次序列包含无效班次");
+      }
+    }
     const horizon = Math.min(366, Math.max(7, input.generationHorizonDays ?? 90));
     const slots = cycleSlots(input.startDate, input.sequence.map((s) => s.shiftTemplateId), horizon);
     const occupied = new Set(
@@ -349,7 +355,7 @@ export const api = {
     let generatedCount = 0;
     for (const slot of slots) {
       if (occupied.has(slot.date)) continue;
-      const tpl = ensureTemplates().find((t) => t.id === slot.shiftTemplateId);
+      const tpl = templates.find((t) => t.id === slot.shiftTemplateId);
       if (!tpl) continue;
       const snap = snapshotFromTemplate(tpl);
       const times = instanceTimes(slot.date, snap);
@@ -363,6 +369,7 @@ export const api = {
         kind: snap.kind,
         status: "scheduled",
         source: "rule",
+        sourceRuleId: ruleId,
         shiftSnapshot: snap,
         locationSnapshot: null,
         note: null,
@@ -745,6 +752,7 @@ async function extendLocalRules(upToDate: string): Promise<void> {
         kind: snap.kind,
         status: "scheduled",
         source: "rule",
+        sourceRuleId: rule.id,
         shiftSnapshot: snap,
         locationSnapshot: null,
         note: null,
@@ -765,12 +773,13 @@ async function extendLocalRules(upToDate: string): Promise<void> {
 /** 本地：已存在实例 + 当前排班表内存计算补全（不写存储）。 */
 function localMergedInstances(from: string, to: string): ScheduleInstance[] {
   const docs = read<LocalInstance[]>(LOCAL_SCHEDULES_KEY, []);
+  const active = read<string>(LOCAL_ACTIVE_RULE_KEY, "");
   const existing = docs
     .filter((d) => d.businessDate >= from && d.businessDate <= to)
+    .filter((d) => d.source !== "rule" || d.sourceRuleId === active)
     .sort((a, b) => (a.businessDate < b.businessDate ? -1 : 1))
     .map(toInstance);
   const rules = read<LocalRule[]>(LOCAL_RULES_KEY, []).filter((r) => r.isActive);
-  const active = read<string>(LOCAL_ACTIVE_RULE_KEY, "");
   const activeRule = rules.find((r) => r.id === active);
   if (!activeRule) return existing;
   const templates = ensureTemplates();

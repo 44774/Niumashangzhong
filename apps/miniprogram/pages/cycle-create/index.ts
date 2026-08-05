@@ -130,6 +130,10 @@ Page({
       return;
     }
     const ids = sequence.map((s) => s.templateId);
+    if (ids.some((id) => !id)) {
+      this.setData({ preview: [] });
+      return;
+    }
     const slots = cycleSlots(startDate, ids, 14);
     const templateById = new Map(templates.map((t) => [t.id, t]));
     const preview = slots

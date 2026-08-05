@@ -73,9 +73,11 @@ export function mergeSchedules(
   to: string,
 ): ScheduleInstance[] {
   const activeRule = rules.find((r) => r.isCurrent);
-  const byDate = new Map(instances.map((i) => [i.businessDate, i]));
+  // 历史遗留的“规则生成实例”不作为手动排班，由当前排班表重新计算覆盖
+  const stored = instances.filter((i) => i.source !== "rule");
+  const byDate = new Map(stored.map((i) => [i.businessDate, i]));
   const templateById = new Map(templates.map((t) => [t.id, t]));
-  const merged = [...instances];
+  const merged = [...stored];
   if (activeRule) {
     let cursor = from;
     while (cursor <= to) {
