@@ -30,11 +30,21 @@ Page({
   },
 
   onShow() {
+    this.setTabBarSelected(1);
     if (!getToken()) {
       wx.reLaunch({ url: "/pages/login/index" });
       return;
     }
     this.load();
+  },
+
+  setTabBarSelected(index: number) {
+    const tabBar = this.getTabBar?.();
+    if (tabBar) {
+      (tabBar as unknown as { setData: (data: { selected: number }) => void }).setData({
+        selected: index,
+      });
+    }
   },
 
   onPullDownRefresh() {

@@ -13,6 +13,7 @@
 
 .tab-item {
   flex: 1;
+  min-width: 0;
   height: 112rpx;
   display: flex;
   align-items: center;
@@ -22,7 +23,7 @@
 }
 
 .tab-item.active {
-  color: var(--wc-color-brand-primary);
+  color: #ffffff;
   font-weight: 600;
 }
 
@@ -36,5 +37,5 @@
 }
 
 .tab-item.active .tab-label {
-  background: #E8F1FF;
+  background: #0F2B4D;
 }
