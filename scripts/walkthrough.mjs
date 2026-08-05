@@ -57,11 +57,37 @@ console.log(
   }),
 );
 await miniProgram.screenshot({ path: join(shotDir, "02-calendar.png") });
+// 第一次点击：仅选中，不跳转
+await p.callMethod("onDateTap", { detail: { date: "2026-08-06" } });
+await sleep(800);
+p = await miniProgram.currentPage();
+console.log("first tap:", JSON.stringify({ path: p?.path, selectedDate: await p.data("selectedDate") }));
+// 第二次点击：进入详情
+await p.callMethod("onDateTap", { detail: { date: "2026-08-06" } });
+await sleep(1500);
+p = await miniProgram.currentPage();
+console.log("second tap:", p?.path);
+await miniProgram.navigateBack();
+await sleep(1200);
+p = await miniProgram.currentPage();
+// 月份选择器
+await p.callMethod("onMonthPickerChange", { detail: { value: "2026-10" } });
+await sleep(2000);
+p = await miniProgram.currentPage();
+console.log(
+  "picker month:",
+  JSON.stringify({ monthLabel: await p.data("monthLabel"), year: await p.data("year"), month: await p.data("month") }),
+);
+await p.callMethod("goToday");
+await sleep(1500);
+p = await miniProgram.currentPage();
 await p.callMethod("nextMonth");
 await sleep(2500);
 console.log("after nextMonth:", await p.data("monthLabel"));
 await p.callMethod("goToday");
 await sleep(1500);
+await p.callMethod("onDateTap", { detail: { date: "2026-08-10" } });
+await sleep(800);
 await p.callMethod("onDateTap", { detail: { date: "2026-08-10" } });
 await sleep(1500);
 console.log("detail after tap:", (await miniProgram.currentPage())?.path);

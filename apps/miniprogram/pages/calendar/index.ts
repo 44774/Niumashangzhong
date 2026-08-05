@@ -8,6 +8,7 @@ import { getToken } from "../../stores/session";
 import {
   buildMonthGrid,
   monthLabel,
+  pad2,
   parseDate,
   threeMonthRange,
   todayString,
@@ -30,6 +31,7 @@ Page({
     year: 0,
     month: 0,
     monthLabel: "",
+    monthValue: "",
     cells: [] as Array<{ date: string; day: number; inMonth: boolean; isToday: boolean }>,
     selectedDate: "",
     shiftMap: {} as Record<string, CalendarDayShift[]>,
@@ -85,6 +87,7 @@ Page({
       year,
       month,
       monthLabel: monthLabel(year, month),
+      monthValue: `${year}-${pad2(month)}`,
       cells: buildMonthGrid(year, month, today),
       selectedDate: today,
       showBackToday: false,
@@ -217,7 +220,23 @@ Page({
       year,
       month,
       monthLabel: monthLabel(year, month),
+      monthValue: `${year}-${pad2(month)}`,
       cells: buildMonthGrid(year, month, today),
+    });
+    this.load();
+  },
+
+  onMonthPickerChange(event: WechatMiniprogram.PickerChange) {
+    const value = String(event.detail.value);
+    const [y, m] = value.split("-").map(Number);
+    if (!y || !m || m < 1 || m > 12) return;
+    const today = todayString();
+    this.setData({
+      year: y,
+      month: m,
+      monthLabel: monthLabel(y, m),
+      monthValue: `${y}-${pad2(m)}`,
+      cells: buildMonthGrid(y, m, today),
     });
     this.load();
   },
@@ -252,14 +271,25 @@ Page({
 
   onDateTap(event: WechatMiniprogram.CustomEvent<{ date: string }>) {
     const date = event.detail.date;
-    this.setData({ selectedDate: date });
-    this.updateSelectedSummary();
-    void getWeatherCached(date, date).then((list) => {
-      this.setData({ todayWeather: list[0] ?? null, weatherError: false });
-    }).catch(() => {
-      this.setData({ weatherError: true });
-    });
+    if (this.data.selectedDate !== date) {
+      // 第一次点击：仅选中
+      this.setData({ selectedDate: date });
+      this.updateSelectedSummary();
+      this.loadWeatherFor(date);
+      return;
+    }
+    // 第二次点击：进入详情
     wx.navigateTo({ url: `/pages/schedule-detail/index?date=${date}` });
+  },
+
+  loadWeatherFor(date: string) {
+    void getWeatherCached(date, date)
+      .then((list) => {
+        this.setData({ todayWeather: list[0] ?? null, weatherError: false });
+      })
+      .catch(() => {
+        this.setData({ weatherError: true });
+      });
   },
 
   onDateLongPress(event: WechatMiniprogram.CustomEvent<{ date: string }>) {

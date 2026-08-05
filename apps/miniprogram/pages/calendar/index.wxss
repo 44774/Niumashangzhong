@@ -15,6 +15,12 @@
   flex-shrink: 0;
 }
 
+.month-picker {
+  padding: 8rpx 20rpx;
+  border-radius: var(--wc-radius-md);
+  background: var(--wc-color-surface-card);
+}
+
 .month-arrow {
   width: 64rpx;
   height: 64rpx;

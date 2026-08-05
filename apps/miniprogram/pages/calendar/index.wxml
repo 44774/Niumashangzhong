@@ -2,7 +2,9 @@
   <view class="row-between month-bar">
     <view class="row month-nav">
       <text class="month-arrow" bindtap="prevMonth">‹</text>
-      <text class="month-label">{{monthLabel}}</text>
+      <picker mode="date" fields="month" value="{{monthValue}}" bindchange="onMonthPickerChange">
+        <view class="month-label month-picker">{{monthLabel}}</view>
+      </picker>
       <text class="month-arrow" bindtap="nextMonth">›</text>
     </view>
     <view class="row">
