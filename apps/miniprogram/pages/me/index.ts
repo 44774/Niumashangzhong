@@ -73,6 +73,10 @@ Page({
     wx.navigateTo({ url: "/pages/about/index" });
   },
 
+  goPrivacyAgreement() {
+    wx.navigateTo({ url: "/pages/privacy-agreement/index?readonly=1" });
+  },
+
   logout() {
     wx.showModal({
       title: "退出登录",

@@ -25,6 +25,7 @@ import {
 } from "../../services/calendar-cache";
 import { getWeatherCached } from "../../services/weather-cache";
 import type { WeatherForecast } from "../../typings/api";
+import { hasAgreedPrivacyAgreement } from "../../utils/privacy-agreement";
 
 Page({
   data: {
@@ -59,6 +60,10 @@ Page({
     this.setTabBarSelected(0);
     if (!getToken()) {
       wx.reLaunch({ url: "/pages/login/index" });
+      return;
+    }
+    if (!hasAgreedPrivacyAgreement()) {
+      wx.reLaunch({ url: "/pages/privacy-agreement/index" });
       return;
     }
     if (!this.data.year) {

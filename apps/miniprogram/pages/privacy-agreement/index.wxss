@@ -1,0 +1,137 @@
+.agreement-page {
+  min-height: 100vh;
+  background: rgba(15, 23, 42, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32rpx;
+  box-sizing: border-box;
+}
+
+.agreement-card {
+  width: 100%;
+  max-width: 720rpx;
+  background: #ffffff;
+  border-radius: 24rpx;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 32rpx 0 0;
+}
+
+.agreement-title {
+  font-size: 36rpx;
+  font-weight: 700;
+  text-align: center;
+}
+
+.agreement-version {
+  display: block;
+  text-align: center;
+  color: var(--wc-color-text-tertiary);
+  font-size: 24rpx;
+  margin-top: 6rpx;
+}
+
+.agreement-scroll {
+  height: 60vh;
+  margin-top: 24rpx;
+  padding: 0 32rpx;
+  box-sizing: border-box;
+}
+
+.agreement-intro {
+  font-size: 26rpx;
+  color: var(--wc-color-text-secondary);
+  line-height: 1.7;
+}
+
+.agreement-section {
+  margin-top: 28rpx;
+}
+
+.section-title {
+  display: block;
+  font-size: 28rpx;
+  font-weight: 600;
+}
+
+.section-body {
+  display: block;
+  color: var(--wc-color-text-secondary);
+  font-size: 26rpx;
+  line-height: 1.7;
+  margin-top: 8rpx;
+}
+
+.privacy-item {
+  background: var(--wc-color-surface-subtle);
+  border-radius: var(--wc-radius-md);
+  padding: 18rpx 22rpx;
+  margin-top: 14rpx;
+}
+
+.privacy-item-title {
+  display: block;
+  font-size: 27rpx;
+  font-weight: 600;
+}
+
+.privacy-item-desc {
+  display: block;
+  color: var(--wc-color-text-secondary);
+  font-size: 24rpx;
+  line-height: 1.6;
+  margin-top: 6rpx;
+}
+
+.agreement-end {
+  text-align: center;
+  color: var(--wc-color-text-tertiary);
+  font-size: 22rpx;
+  padding: 28rpx 0 32rpx;
+}
+
+.agreement-actions {
+  display: flex;
+  border-top: 1rpx solid var(--wc-color-border-default);
+  padding: 20rpx 24rpx 24rpx;
+  gap: 20rpx;
+}
+
+.action-btn {
+  flex: 1;
+  height: 88rpx;
+  line-height: 88rpx;
+  font-size: 30rpx;
+  border-radius: var(--wc-radius-md);
+  border: none;
+}
+
+.action-btn::after {
+  border: none;
+}
+
+.disagree-btn {
+  background: var(--wc-color-surface-subtle);
+  color: var(--wc-color-text-secondary);
+}
+
+.agree-btn {
+  background: var(--wc-color-brand-primary);
+  color: var(--wc-color-text-inverse);
+  font-weight: 600;
+}
+
+.agree-btn.disabled {
+  background: #a8c8f5;
+  color: #ffffff;
+}
+
+.scroll-hint {
+  display: block;
+  text-align: center;
+  color: var(--wc-color-text-tertiary);
+  font-size: 22rpx;
+  padding: 0 0 20rpx;
+}

@@ -4,6 +4,7 @@
     "pages/week/index",
     "pages/notify/index",
     "pages/me/index",
+    "pages/privacy-agreement/index",
     "pages/login/index",
     "pages/schedule-detail/index",
     "pages/schedule-change/index",

@@ -2,6 +2,7 @@ import { api, loginLocal } from "../../services/api";
 import { USE_CLOUDBASE } from "../../config";
 import { setSession } from "../../stores/session";
 import { APP_NAME } from "../../utils/version";
+import { hasAgreedPrivacyAgreement } from "../../utils/privacy-agreement";
 
 interface WechatProfile {
   nickName: string;
@@ -70,6 +71,10 @@ Page({
         ? await api.loginWechat(code, name, avatarUrl)
         : await api.loginDev(name ?? "微信用户", avatarUrl);
       setSession(result.accessToken, result.user, result.workspace);
+      if (!hasAgreedPrivacyAgreement()) {
+        wx.reLaunch({ url: "/pages/privacy-agreement/index" });
+        return;
+      }
       wx.switchTab({ url: "/pages/calendar/index" });
     } catch (err) {
       wx.showToast({ title: (err as Error).message, icon: "none" });
@@ -89,6 +94,10 @@ Page({
         } else {
           const result = await api.loginDev(this.data.displayName.trim() || "开发用户");
           setSession(result.accessToken, result.user, result.workspace, "http");
+        }
+        if (!hasAgreedPrivacyAgreement()) {
+          wx.reLaunch({ url: "/pages/privacy-agreement/index" });
+          return;
         }
         wx.switchTab({ url: "/pages/calendar/index" });
       } catch (err) {

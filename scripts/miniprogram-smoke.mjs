@@ -85,6 +85,11 @@ try {
       while (Date.now() - start < 25_000) {
         page = await miniProgram.currentPage();
         if (page?.path === "pages/calendar/index") break;
+        if (page?.path === "pages/privacy-agreement/index") {
+          await page.callMethod("onScrollToBottom");
+          await sleep(300);
+          await page.callMethod("onAgree");
+        }
         await sleep(1000);
       }
       record("云登录进入日历", page?.path === "pages/calendar/index", page?.path);

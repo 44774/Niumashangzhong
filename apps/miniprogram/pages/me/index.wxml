@@ -40,6 +40,10 @@
       <text>关于与隐私</text>
       <text class="menu-arrow">›</text>
     </view>
+    <view class="menu-item" bindtap="goPrivacyAgreement">
+      <text>用户隐私协议</text>
+      <text class="menu-arrow">›</text>
+    </view>
   </view>
 
   <button class="btn-secondary btn-block logout-btn" bindtap="logout">退出登录</button>

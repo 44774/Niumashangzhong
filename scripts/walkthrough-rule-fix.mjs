@@ -35,6 +35,14 @@ await sleep(1500);
 let p = await page("login");
 await p.callMethod("onWechatLogin");
 await sleep(4000);
+// 首次登录强制隐私协议：滑动到底并同意
+let agreePage = await miniProgram.currentPage();
+if (agreePage && agreePage.path === "pages/privacy-agreement/index") {
+  await agreePage.callMethod("onScrollToBottom");
+  await sleep(300);
+  await agreePage.callMethod("onAgree");
+  await sleep(2500);
+}
 await miniProgram.switchTab("/pages/calendar/index");
 await sleep(2500);
 p = await page("calendar");

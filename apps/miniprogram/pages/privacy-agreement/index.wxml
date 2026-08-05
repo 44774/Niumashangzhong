@@ -1,0 +1,75 @@
+<view class="agreement-page">
+  <view class="agreement-card">
+    <text class="agreement-title">用户隐私协议</text>
+    <text class="agreement-version">版本 {{agreementVersion}}</text>
+
+    <scroll-view
+      scroll-y
+      class="agreement-scroll"
+      lower-threshold="20"
+      bindscrolltolower="onScrollToBottom"
+    >
+      <view class="agreement-intro">
+        欢迎使用{{appName}}（当前版本 {{appVersion}}）。在您使用本小程序前，请仔细阅读并充分理解本协议全部内容。
+      </view>
+
+      <view class="agreement-section">
+        <text class="section-title">一、协议的确认与接受</text>
+        <text class="section-body">
+          您点击“我已阅读并同意”，即表示您已阅读并理解本协议，并同意我们按照本协议收集、使用您的信息。如您不同意，请停止使用本小程序。
+        </text>
+      </view>
+
+      <view class="agreement-section">
+        <text class="section-title">二、我们收集与使用的信息</text>
+        <view class="privacy-item" wx:for="{{items}}" wx:key="title">
+          <text class="privacy-item-title">{{item.title}}</text>
+          <text class="privacy-item-desc">{{item.desc}}</text>
+        </view>
+      </view>
+
+      <view class="agreement-section">
+        <text class="section-title">三、信息的使用规则</text>
+        <text class="section-body">{{rule}}</text>
+      </view>
+
+      <view class="agreement-section">
+        <text class="section-title">四、您的权利</text>
+        <text class="section-body">
+          您可以随时查看、修改或删除您录入的排班数据。本地模式数据仅保存在本机，清除小程序数据即可删除；云模式数据可在小程序内删除排班表、班次与改班记录，如需注销账号请通过微信公众平台处理。
+        </text>
+      </view>
+
+      <view class="agreement-section">
+        <text class="section-title">五、协议的更新</text>
+        <text class="section-body">
+          本协议更新后，我们会在您再次使用小程序时以弹窗方式提示并征得您的同意；未同意新版本前，您将无法继续使用。
+        </text>
+      </view>
+
+      <view class="agreement-section">
+        <text class="section-title">六、其他</text>
+        <text class="section-body">
+          天气与节假日数据来自第三方公开接口（Open-Meteo、timor.tech），仅供展示与提醒参考。如您对本协议有任何疑问，可通过微信公众平台联系我们。
+        </text>
+      </view>
+
+      <view class="agreement-end">- 协议正文结束 -</view>
+    </scroll-view>
+
+    <view class="agreement-actions">
+      <block wx:if="{{readonly}}">
+        <button class="action-btn agree-btn" bindtap="onBack">返回</button>
+      </block>
+      <block wx:else>
+        <button class="action-btn disagree-btn" bindtap="onDisagree">不同意</button>
+        <button
+          class="action-btn agree-btn {{canAgree ? '' : 'disabled'}}"
+          disabled="{{!canAgree}}"
+          bindtap="onAgree"
+        >我已阅读并同意</button>
+      </block>
+    </view>
+    <text wx:if="{{!readonly && !canAgree}}" class="scroll-hint">请滑动至协议底部后同意</text>
+  </view>
+</view>
