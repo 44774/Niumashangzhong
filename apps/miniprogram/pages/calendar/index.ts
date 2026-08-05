@@ -10,7 +10,6 @@ import {
   monthLabel,
   pad2,
   parseDate,
-  threeMonthRange,
   todayString,
   weekdayCN,
 } from "../../utils/date";
@@ -19,16 +18,66 @@ import { ensureHolidayRange } from "../../services/holiday-cache";
 import { isOvertime } from "../../utils/holiday";
 import { loadRange } from "../../services/schedule-view";
 import {
+  clearCalendarCache,
   getCalendarWindow,
   setCalendarWindow,
   type CalendarWindowData,
 } from "../../services/calendar-cache";
-import { getActiveRuleCache } from "../../services/meta-cache";
+import { getActiveRuleCache, getTemplatesCached } from "../../services/meta-cache";
 import { getWeatherCached } from "../../services/weather-cache";
 import type { WeatherForecast } from "../../typings/api";
 import { hasAgreedPrivacyAgreement } from "../../utils/privacy-agreement";
 
+interface MonthCell {
+  date: string;
+  day: number;
+  inMonth: boolean;
+  isToday: boolean;
+  hasShift: boolean;
+  hasChange: boolean;
+}
+
+interface MonthVM {
+  key: string;
+  year: number;
+  month: number;
+  label: string;
+  cells: MonthCell[];
+  shiftMap: Record<string, CalendarDayShift[]>;
+  legend: ShiftTemplate[];
+  schedules: ScheduleInstance[];
+  loading: boolean;
+  loaded: boolean;
+  error: boolean;
+}
+
+const PRELOAD_MONTHS = 3;
+const MAX_MONTHS = 25;
+
 let lastScheduledRuleKey = "";
+let lastScrollTop = 0;
+let correctionUntil = 0;
+let snappingUntil = 0;
+let idleTimer: ReturnType<typeof setTimeout> | null = null;
+const loadingMonths = new Map<string, Promise<void>>();
+
+function monthStart(year: number, month: number): string {
+  return `${year}-${pad2(month)}-01`;
+}
+
+function monthEnd(year: number, month: number): string {
+  const days = new Date(year, month, 0).getDate();
+  return `${year}-${pad2(month)}-${pad2(days)}`;
+}
+
+function addMonths(year: number, month: number, delta: number): { year: number; month: number } {
+  const total = year * 12 + (month - 1) + delta;
+  return { year: Math.floor(total / 12), month: (total % 12) + 1 };
+}
+
+function keyOf(year: number, month: number): string {
+  return `${year}-${pad2(month)}`;
+}
 
 Page({
   data: {
@@ -36,39 +85,25 @@ Page({
     month: 0,
     monthLabel: "",
     monthValue: "",
-    cells: [] as Array<{
-      date: string;
-      day: number;
-      inMonth: boolean;
-      isToday: boolean;
-      hasShift: boolean;
-      hasChange: boolean;
-    }>,
-    selectedDate: "",
-    shiftMap: {} as Record<string, CalendarDayShift[]>,
+    months: [] as MonthVM[],
+    scrollTop: 0,
+    monthHeight: 0,
     legend: [] as ShiftTemplate[],
-    todaySummary: null as ScheduleInstance | null,
+    legendLoading: true,
+    legendSk: [0, 1, 2, 3],
+    selectedDate: "",
     selectedSummary: null as ScheduleInstance | null,
     selectedLabel: "",
     selectedTitle: "",
     selectedTimeText: "",
     selectedLocation: "",
     selectedDuration: "",
-    scheduleList: [] as ScheduleInstance[],
-    changeDates: [] as string[],
     todayWeather: null as WeatherForecast | null,
     weatherLoading: true,
     weatherError: false,
     showBackToday: false,
-    loading: true,
     error: false,
     errorMessage: "",
-    touchStartX: 0,
-    touchStartY: 0,
-    dragOffset: 0,
-    dragTransition: "none",
-    dragHeight: 240,
-    dragAnimating: false,
   },
 
   onShow() {
@@ -81,10 +116,9 @@ Page({
       wx.reLaunch({ url: "/pages/privacy-agreement/index" });
       return;
     }
-    if (!this.data.year) {
-      this.initMonth();
+    if (this.data.months.length === 0) {
+      this.initCalendar();
     }
-    this.load();
   },
 
   setTabBarSelected(index: number) {
@@ -97,44 +131,103 @@ Page({
   },
 
   onPullDownRefresh() {
-    this.load().finally(() => wx.stopPullDownRefresh());
+    clearCalendarCache();
+    const months = this.data.months.map((vm) => ({
+      ...vm,
+      loaded: false,
+      loading: true,
+      error: false,
+    }));
+    this.setData({ months });
+    for (const vm of months) {
+      void this.loadMonth(vm);
+    }
+    wx.stopPullDownRefresh();
   },
 
-  initMonth() {
+  initCalendar() {
     const today = todayString();
     const { year, month } = parseDate(today);
+    const months: MonthVM[] = [];
+    for (let delta = -PRELOAD_MONTHS; delta <= PRELOAD_MONTHS; delta += 1) {
+      const ym = addMonths(year, month, delta);
+      months.push(this.createMonthVM(ym.year, ym.month));
+    }
     this.setData({
       year,
       month,
       monthLabel: monthLabel(year, month),
-      monthValue: `${year}-${pad2(month)}`,
-      cells: buildMonthGrid(year, month, today).map((cell) => ({
-        ...cell,
-        hasShift: false,
-        hasChange: false,
-      })),
+      monthValue: keyOf(year, month),
+      months,
       selectedDate: today,
       showBackToday: false,
+      error: false,
+      legend: months[PRELOAD_MONTHS]?.legend ?? [],
+      legendLoading: Boolean(months[PRELOAD_MONTHS]?.loading),
     });
     wx.nextTick(() => {
-      this.measureDragHeight();
+      this.measureMonthHeight();
     });
+    for (const vm of months) {
+      void this.loadMonth(vm);
+    }
+    this.loadWeatherFor(today);
+    this.updateSelectedSummary();
   },
 
-  async load() {
-    if (!getToken()) return;
-    const { from, to } = threeMonthRange(this.data.year, this.data.month);
-    const cached = getCalendarWindow(this.data.year, this.data.month);
-    if (cached) this.applyWindow(cached);
-    this.setData({ loading: !cached, error: false });
+  createMonthVM(year: number, month: number): MonthVM {
+    const cache = getCalendarWindow(year, month);
+    const changeSet = new Set(cache?.changeDates ?? []);
+    return {
+      key: keyOf(year, month),
+      year,
+      month,
+      label: monthLabel(year, month),
+      cells: buildMonthGrid(year, month, todayString()).map((cell) => ({
+        ...cell,
+        hasShift: Boolean((cache?.shiftMap[cell.date] ?? []).length),
+        hasChange: changeSet.has(cell.date),
+      })),
+      shiftMap: cache?.shiftMap ?? {},
+      legend: cache?.legend ?? [],
+      schedules: cache?.scheduleList ?? [],
+      loading: !cache,
+      loaded: Boolean(cache),
+      error: false,
+    };
+  },
+
+  patchMonth(key: string, patch: Partial<MonthVM>) {
+    const months = this.data.months.map((vm) => (vm.key === key ? { ...vm, ...patch } : vm));
+    this.setData({ months });
+  },
+
+  async loadMonth(vm: MonthVM) {
+    if (vm.loaded || loadingMonths.has(vm.key)) return;
+    const cache = getCalendarWindow(vm.year, vm.month);
+    if (cache) {
+      this.applyMonthData(vm, cache);
+      return;
+    }
+    const promise = this.fetchMonth(vm);
+    loadingMonths.set(vm.key, promise);
     try {
-      const today = todayString();
-      const [templates, schedules, holidayMap, changes, todayWeatherList] = await Promise.all([
-        api.shiftTemplates(true),
+      await promise;
+    } finally {
+      loadingMonths.delete(vm.key);
+    }
+  },
+
+  async fetchMonth(vm: MonthVM) {
+    this.patchMonth(vm.key, { loading: true, error: false });
+    const from = monthStart(vm.year, vm.month);
+    const to = monthEnd(vm.year, vm.month);
+    try {
+      const [schedules, templates, holidayMap, changes] = await Promise.all([
         loadRange(from, to),
+        getTemplatesCached().catch(() => []),
         ensureHolidayRange(from, to),
         api.changeRequestsInRange(from, to).catch(() => []),
-        getWeatherCached(this.data.selectedDate, this.data.selectedDate).catch(() => []),
       ]);
       const shiftMap: Record<string, CalendarDayShift[]> = {};
       for (const item of schedules) {
@@ -147,52 +240,63 @@ Page({
         });
         shiftMap[item.businessDate] = list;
       }
-      const selectedSummary = schedules.find((s) => s.businessDate === this.data.selectedDate) ?? null;
       const changeDates = Array.from(
         new Set(changes.map((c) => c.businessDate).filter((d): d is string => Boolean(d))),
       );
       const windowData: CalendarWindowData = {
         shiftMap,
         legend: templates,
-        todaySummary: selectedSummary,
-        todayLabel: `${this.data.selectedDate} ${weekdayCN(this.data.selectedDate)}`,
-        todayTimeText: selectedSummary
-          ? formatTimeRange(selectedSummary.shiftSnapshot) ?? "休息"
-          : "",
-        todayLocation: selectedSummary?.locationSnapshot?.name ?? "",
-        todayDuration: selectedSummary ? durationLabel(selectedSummary.shiftSnapshot) : "",
+        todaySummary: null,
+        todayLabel: "",
+        todayTimeText: "",
+        todayLocation: "",
+        todayDuration: "",
         changeDates,
         scheduleList: schedules,
       };
-      setCalendarWindow(this.data.year, this.data.month, windowData);
-      this.applyWindow(windowData);
+      setCalendarWindow(vm.year, vm.month, windowData);
+      this.applyMonthData(vm, windowData);
       this.maybeScheduleRuleJobs();
-      this.setData({
-        scheduleList: schedules,
-        selectedSummary,
-        selectedLabel: `${this.data.selectedDate} ${weekdayCN(this.data.selectedDate)}`,
-        selectedTitle: this.data.selectedDate === today ? "今日排班" : "所选日期排班",
-        selectedTimeText: selectedSummary
-          ? formatTimeRange(selectedSummary.shiftSnapshot) ?? "休息"
-          : "",
-        selectedLocation: selectedSummary?.locationSnapshot?.name ?? "",
-        selectedDuration: selectedSummary ? durationLabel(selectedSummary.shiftSnapshot) : "",
-        todayWeather: todayWeatherList[0] ?? null,
-        weatherLoading: false,
-        weatherError: false,
-        loading: false,
-      });
-    } catch (err) {
-      if (!cached) {
-        this.setData({
-          loading: false,
-          error: true,
-          errorMessage: (err as Error).message,
-        });
-      } else {
-        this.setData({ loading: false, weatherLoading: false, weatherError: true });
+      if (this.data.selectedDate >= from && this.data.selectedDate <= to) {
+        this.updateSelectedSummary();
       }
+    } catch (err) {
+      this.patchMonth(vm.key, { loading: false, error: true });
+      this.setData({ error: true, errorMessage: (err as Error).message });
     }
+  },
+
+  applyMonthData(vm: MonthVM, data: CalendarWindowData) {
+    const changeSet = new Set(data.changeDates);
+    const cells = buildMonthGrid(vm.year, vm.month, todayString()).map((cell) => ({
+      ...cell,
+      hasShift: Boolean((data.shiftMap[cell.date] ?? []).length),
+      hasChange: changeSet.has(cell.date),
+    }));
+    this.patchMonth(vm.key, {
+      cells,
+      shiftMap: data.shiftMap,
+      legend: data.legend,
+      schedules: data.scheduleList,
+      loading: false,
+      loaded: true,
+      error: false,
+    });
+    this.updateAnchorLegend();
+  },
+
+  updateAnchorLegend() {
+    const months = this.data.months;
+    const top =
+      months.find((m) => m.key === keyOf(this.data.year, this.data.month)) ?? months[0];
+    const legend =
+      top?.legend && top.legend.length > 0
+        ? top.legend
+        : (months.find((m) => m.legend.length > 0)?.legend ?? []);
+    this.setData({
+      legend,
+      legendLoading: Boolean(top?.loading) && legend.length === 0,
+    });
   },
 
   maybeScheduleRuleJobs() {
@@ -206,72 +310,236 @@ Page({
     }
   },
 
-  applyWindow(data: CalendarWindowData) {
-    const changeSet = new Set(data.changeDates);
-    const cells = this.data.cells.map((cell) => ({
-      ...cell,
-      hasChange: changeSet.has(cell.date),
-      hasShift: Boolean((data.shiftMap[cell.date] ?? []).length),
-    }));
-    this.setData({
-      shiftMap: data.shiftMap,
-      legend: data.legend,
-      todaySummary: data.todaySummary,
-      todayLabel: data.todayLabel,
-      todayTimeText: data.todayTimeText,
-      todayLocation: data.todayLocation,
-      todayDuration: data.todayDuration,
-      changeDates: data.changeDates,
-      cells,
-      scheduleList: data.scheduleList,
-    });
-    this.updateSelectedSummary();
+  ensureWindow(year: number, month: number, opts: { jumpTo?: string } = {}) {
+    if (opts.jumpTo) {
+      const [jy, jm] = opts.jumpTo.split("-").map(Number);
+      if (jy && jm) {
+        this.setData({
+          year: jy,
+          month: jm,
+          monthLabel: monthLabel(jy, jm),
+          monthValue: opts.jumpTo,
+        });
+        this.updateShowBackToday();
+      }
+    }
+    const required: Array<{ year: number; month: number; key: string }> = [];
+    for (let delta = -PRELOAD_MONTHS; delta <= PRELOAD_MONTHS; delta += 1) {
+      const ym = addMonths(year, month, delta);
+      required.push({ ...ym, key: keyOf(ym.year, ym.month) });
+    }
+    const existing = new Set(this.data.months.map((vm) => vm.key));
+    const missing = required.filter((r) => !existing.has(r.key));
+    const prevFirstKey = this.data.months[0]?.key ?? "";
+    if (missing.length === 0) {
+      if (opts.jumpTo) {
+        const index = this.data.months.findIndex((vm) => vm.key === opts.jumpTo);
+        if (index >= 0 && this.data.monthHeight > 0) {
+          correctionUntil = Date.now() + 300;
+          this.setData({ scrollTop: index * this.data.monthHeight });
+        }
+      }
+      return;
+    }
+    const months = [...this.data.months];
+    const newVMs: MonthVM[] = [];
+    let prependCount = 0;
+    for (const r of missing) {
+      const vm = this.createMonthVM(r.year, r.month);
+      newVMs.push(vm);
+      if (r.key < prevFirstKey) prependCount += 1;
+      const index = months.findIndex((x) => x.key > r.key);
+      if (index < 0) months.push(vm);
+      else months.splice(index, 0, vm);
+    }
+    // 裁剪过远月份，保持 DOM 数量可控
+    const centerKey = opts.jumpTo ?? keyOf(year, month);
+    const centerIndex = months.findIndex((x) => x.key === centerKey);
+    let pruneFront = 0;
+    if (months.length > MAX_MONTHS && centerIndex >= 0) {
+      const start = Math.max(0, centerIndex - 12);
+      const end = Math.min(months.length, centerIndex + 13);
+      if (end < months.length) months.splice(end);
+      if (start > 0) {
+        months.splice(0, start);
+        pruneFront = start;
+      }
+    }
+    const height = this.data.monthHeight;
+    if (opts.jumpTo) {
+      const index = months.findIndex((vm) => vm.key === opts.jumpTo);
+      correctionUntil = Date.now() + 300;
+      this.setData({
+        months,
+        scrollTop: (index >= 0 ? index : 0) * height,
+        error: false,
+      });
+    } else {
+      const adjust = (prependCount - pruneFront) * height;
+      if (adjust !== 0) {
+        correctionUntil = Date.now() + 300;
+        this.setData({ months, scrollTop: lastScrollTop + adjust, error: false });
+      } else {
+        this.setData({ months, error: false });
+      }
+    }
+    for (const vm of newVMs) {
+      void this.loadMonth(vm);
+    }
   },
 
-  updateSelectedSummary() {
-    const date = this.data.selectedDate;
-    const summary = this.data.scheduleList.find((s) => s.businessDate === date) ?? null;
-    const today = todayString();
-    const { year: todayYear, month: todayMonth } = parseDate(today);
-    this.setData({
-      selectedSummary: summary,
-      selectedLabel: `${date} ${weekdayCN(date)}`,
-      selectedTitle: date === todayString() ? "今日排班" : "所选日期排班",
-      selectedTimeText: summary ? formatTimeRange(summary.shiftSnapshot) ?? "休息" : "",
-      selectedLocation: summary?.locationSnapshot?.name ?? "",
-      selectedDuration: summary ? durationLabel(summary.shiftSnapshot) : "",
-      showBackToday:
-        date !== today || this.data.year !== todayYear || this.data.month !== todayMonth,
-    });
+  /** 滚动中只预加载已渲染月份的数据，不修改 DOM 布局，避免滚动跳变 */
+  preloadNearby(top: MonthVM) {
+    for (let delta = -PRELOAD_MONTHS; delta <= PRELOAD_MONTHS; delta += 1) {
+      const ym = addMonths(top.year, top.month, delta);
+      const key = keyOf(ym.year, ym.month);
+      const vm = this.data.months.find((m) => m.key === key);
+      if (vm && !vm.loaded) {
+        void this.loadMonth(vm);
+      }
+    }
+  },
+
+  measureMonthHeight() {
+    wx.createSelectorQuery()
+      .select(".month-block")
+      .boundingClientRect((rect) => {
+        if (rect && rect.height > 0) {
+          const index = this.data.months.findIndex(
+            (vm) => vm.key === keyOf(this.data.year, this.data.month),
+          );
+          this.setData({
+            monthHeight: rect.height,
+            scrollTop: Math.max(0, index) * rect.height,
+          });
+          correctionUntil = Date.now() + 300;
+        }
+      })
+      .exec();
+  },
+
+  onScroll(event: WechatMiniprogram.ScrollViewScroll) {
+    lastScrollTop = event.detail.scrollTop;
+    // 滚动停止约 300ms 后自动回正到最近月份边界
+    if (idleTimer) clearTimeout(idleTimer);
+    idleTimer = setTimeout(() => {
+      idleTimer = null;
+      this.snapToMonth();
+    }, 300);
+    if (Date.now() < correctionUntil) return;
+    const height = this.data.monthHeight;
+    if (!height || this.data.months.length === 0) return;
+    const topIndex = Math.max(
+      0,
+      Math.min(this.data.months.length - 1, Math.floor(event.detail.scrollTop / height)),
+    );
+    const top = this.data.months[topIndex];
+    if (!top) return;
+    this.applyTopMonth(top);
+    // 滚动中持续加载前后 3 个月的数据（不增删 DOM）
+    this.preloadNearby(top);
+  },
+
+  applyTopMonth(top: MonthVM) {
+    if (top.key !== keyOf(this.data.year, this.data.month)) {
+      this.setData({
+        year: top.year,
+        month: top.month,
+        monthLabel: top.label,
+        monthValue: top.key,
+      });
+      this.updateShowBackToday();
+      this.updateAnchorLegend();
+      this.applyDefaultSelection(top.year, top.month);
+    }
+  },
+
+  /** 滚动停止后自动回正：吸附到最近的月份边界 */
+  snapToMonth() {
+    if (Date.now() < snappingUntil || Date.now() < correctionUntil) return;
+    const height = this.data.monthHeight;
+    if (!height || this.data.months.length === 0) return;
+    const index = Math.max(
+      0,
+      Math.min(this.data.months.length - 1, Math.round(lastScrollTop / height)),
+    );
+    const target = index * height;
+    if (Math.abs(lastScrollTop - target) > 2) {
+      snappingUntil = Date.now() + 600;
+      lastScrollTop = target;
+      this.setData({ scrollTop: target });
+      const month = this.data.months[index];
+      if (month) this.applyTopMonth(month);
+    }
+  },
+
+  onScrollEnd() {
+    if (idleTimer) {
+      clearTimeout(idleTimer);
+      idleTimer = null;
+    }
+    this.snapToMonth();
+  },
+
+  onScrollToUpper() {
+    if (Date.now() < snappingUntil || Date.now() < correctionUntil) return;
+    const first = this.data.months[0];
+    if (first) this.ensureWindow(first.year, first.month);
+  },
+
+  onScrollToLower() {
+    if (Date.now() < snappingUntil || Date.now() < correctionUntil) return;
+    const last = this.data.months[this.data.months.length - 1];
+    if (last) this.ensureWindow(last.year, last.month);
   },
 
   changeMonth(delta: number) {
-    let year = this.data.year;
-    let month = this.data.month + delta;
-    if (month < 1) {
-      month = 12;
-      year -= 1;
-    } else if (month > 12) {
-      month = 1;
-      year += 1;
-    }
-    const today = todayString();
-    const selectedDate = this.data.selectedDate.startsWith(`${year}-${pad2(month)}`)
-      ? this.data.selectedDate
-      : this.defaultDateForMonth(year, month);
+    const target = addMonths(this.data.year, this.data.month, delta);
     this.setData({
-      year,
-      month,
-      monthLabel: monthLabel(year, month),
-      monthValue: `${year}-${pad2(month)}`,
-      selectedDate,
-      cells: buildMonthGrid(year, month, today).map((cell) => ({
-        ...cell,
-        hasShift: false,
-        hasChange: false,
-      })),
+      year: target.year,
+      month: target.month,
+      monthLabel: monthLabel(target.year, target.month),
+      monthValue: keyOf(target.year, target.month),
     });
-    this.load();
+    this.ensureWindow(target.year, target.month, { jumpTo: keyOf(target.year, target.month) });
+    this.updateShowBackToday();
+    this.applyDefaultSelection(target.year, target.month);
+  },
+
+  onMonthPickerChange(event: WechatMiniprogram.PickerChange) {
+    const value = String(event.detail.value);
+    const [y, m] = value.split("-").map(Number);
+    if (!y || !m || m < 1 || m > 12) return;
+    this.setData({
+      year: y,
+      month: m,
+      monthLabel: monthLabel(y, m),
+      monthValue: keyOf(y, m),
+    });
+    this.ensureWindow(y, m, { jumpTo: keyOf(y, m) });
+    this.updateShowBackToday();
+    this.applyDefaultSelection(y, m);
+  },
+
+  prevMonth() {
+    this.changeMonth(-1);
+  },
+
+  nextMonth() {
+    this.changeMonth(1);
+  },
+
+  goToday() {
+    const today = todayString();
+    const { year, month } = parseDate(today);
+    this.setData({ selectedDate: today });
+    this.ensureWindow(year, month, { jumpTo: keyOf(year, month) });
+    this.updateSelectedSummary();
+    this.loadWeatherFor(today);
+  },
+
+  goSchedules() {
+    wx.navigateTo({ url: "/pages/schedules/index" });
   },
 
   /** 切月默认日期：本月取今天，其他月份取当月 1 号 */
@@ -282,119 +550,45 @@ Page({
     return `${year}-${pad2(month)}-01`;
   },
 
-  measureDragHeight() {
-    wx.createSelectorQuery()
-      .select(".calendar-drag")
-      .boundingClientRect((rect) => {
-        if (rect && rect.height > 0) {
-          this.setData({ dragHeight: rect.height });
-        }
-      })
-      .exec();
+  applyDefaultSelection(year: number, month: number) {
+    const key = `${year}-${pad2(month)}`;
+    if (!this.data.selectedDate.startsWith(key)) {
+      const date = this.defaultDateForMonth(year, month);
+      this.setData({ selectedDate: date });
+      this.updateSelectedSummary();
+      this.loadWeatherFor(date);
+    }
   },
 
-  /** 平滑切换到下个月（direction=1）或上个月（direction=-1） */
-  animateMonthSwitch(direction: number) {
-    if (this.data.dragAnimating) return;
-    const height = this.data.dragHeight || 240;
-    const outOffset = -direction * height;
-    this.setData({ dragAnimating: true, dragTransition: "transform 0.22s ease", dragOffset: outOffset });
-    setTimeout(() => {
-      this.changeMonth(direction);
-      // 新月份从反方向滑入
-      this.setData({ dragTransition: "none", dragOffset: -outOffset });
-      wx.nextTick(() => {
-        this.setData({ dragTransition: "transform 0.22s ease", dragOffset: 0 });
-        setTimeout(() => {
-          this.setData({ dragAnimating: false, dragTransition: "none" });
-        }, 240);
-      });
-    }, 240);
-  },
-
-  onMonthPickerChange(event: WechatMiniprogram.PickerChange) {
-    const value = String(event.detail.value);
-    const [y, m] = value.split("-").map(Number);
-    if (!y || !m || m < 1 || m > 12) return;
+  updateShowBackToday() {
     const today = todayString();
-    const selectedDate = this.data.selectedDate.startsWith(`${y}-${pad2(m)}`)
-      ? this.data.selectedDate
-      : this.defaultDateForMonth(y, m);
+    const { year: todayYear, month: todayMonth } = parseDate(today);
     this.setData({
-      year: y,
-      month: m,
-      monthLabel: monthLabel(y, m),
-      monthValue: `${y}-${pad2(m)}`,
-      selectedDate,
-      cells: buildMonthGrid(y, m, today).map((cell) => ({
-        ...cell,
-        hasShift: false,
-        hasChange: false,
-      })),
-    });
-    this.load();
-  },
-
-  prevMonth() {
-    this.animateMonthSwitch(-1);
-  },
-
-  nextMonth() {
-    this.animateMonthSwitch(1);
-  },
-
-  goToday() {
-    this.initMonth();
-    this.load();
-  },
-
-  goSchedules() {
-    wx.navigateTo({ url: "/pages/schedules/index" });
-  },
-
-  onTouchStart(event: WechatMiniprogram.TouchEvent) {
-    if (this.data.dragAnimating) return;
-    const touch = event.touches[0];
-    this.setData({
-      touchStartX: touch?.clientX ?? 0,
-      touchStartY: touch?.clientY ?? 0,
-      dragOffset: 0,
-      dragTransition: "none",
+      showBackToday:
+        this.data.selectedDate !== today ||
+        this.data.year !== todayYear ||
+        this.data.month !== todayMonth,
     });
   },
 
-  onTouchMove(event: WechatMiniprogram.TouchEvent) {
-    if (this.data.dragAnimating) return;
-    const touch = event.touches[0];
-    if (!touch) return;
-    const deltaY = touch.clientY - this.data.touchStartY;
-    const deltaX = touch.clientX - this.data.touchStartX;
-    // 纵向主导时月历跟随手指（带阻尼）
-    if (Math.abs(deltaY) > Math.abs(deltaX)) {
-      this.setData({ dragOffset: deltaY * 0.5 });
-    }
-  },
-
-  onTouchEnd(event: WechatMiniprogram.TouchEvent) {
-    if (this.data.dragAnimating) return;
-    const touch = event.changedTouches[0];
-    const endX = touch?.clientX ?? 0;
-    const endY = touch?.clientY ?? 0;
-    const deltaX = endX - this.data.touchStartX;
-    const deltaY = endY - this.data.touchStartY;
-    if (Math.abs(deltaY) > Math.abs(deltaX) && Math.abs(deltaY) > 60) {
-      // 纵向：跟手后松手，滑动切换到月份
-      this.animateMonthSwitch(deltaY < 0 ? 1 : -1);
-      return;
-    }
-    if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 50) {
-      // 横向滑动保留切换
-      if (deltaX > 50) this.prevMonth();
-      else if (deltaX < -50) this.nextMonth();
-      return;
-    }
-    // 未达阈值：回弹
-    this.setData({ dragTransition: "transform 0.2s ease", dragOffset: 0 });
+  updateSelectedSummary() {
+    const date = this.data.selectedDate;
+    const today = todayString();
+    const { year: todayYear, month: todayMonth } = parseDate(today);
+    const month = this.data.months.find(
+      (vm) => date >= monthStart(vm.year, vm.month) && date <= monthEnd(vm.year, vm.month),
+    );
+    const summary = month?.schedules.find((s) => s.businessDate === date) ?? null;
+    this.setData({
+      selectedSummary: summary,
+      selectedLabel: `${date} ${weekdayCN(date)}`,
+      selectedTitle: date === today ? "今日排班" : "所选日期排班",
+      selectedTimeText: summary ? formatTimeRange(summary.shiftSnapshot) ?? "休息" : "",
+      selectedLocation: summary?.locationSnapshot?.name ?? "",
+      selectedDuration: summary ? durationLabel(summary.shiftSnapshot) : "",
+      showBackToday:
+        date !== today || this.data.year !== todayYear || this.data.month !== todayMonth,
+    });
   },
 
   onDateTap(event: WechatMiniprogram.CustomEvent<{ date: string }>) {
