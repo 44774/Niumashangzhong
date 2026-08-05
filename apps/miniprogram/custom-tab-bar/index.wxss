@@ -30,12 +30,11 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 60rpx;
-  line-height: 60rpx;
+  height: 64rpx;
   padding: 0 24rpx;
   border-radius: var(--wc-radius-pill);
 }
 
 .tab-item.active .tab-label {
-  background: var(--wc-color-surface-subtle);
+  background: #E8F1FF;
 }
