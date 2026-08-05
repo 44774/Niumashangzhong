@@ -16,7 +16,12 @@
     <skeleton variant="calendar" />
   </block>
   <block wx:else>
-    <view class="calendar-wrap">
+    <view
+      class="calendar-wrap"
+      bindtouchstart="onTouchStart"
+      bindtouchend="onTouchEnd"
+      catchtouchmove="onTouchMove"
+    >
       <calendar-month
         cells="{{cells}}"
         selected-date="{{selectedDate}}"

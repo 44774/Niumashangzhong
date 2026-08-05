@@ -285,6 +285,10 @@ Page({
     });
   },
 
+  onTouchMove() {
+    // 阻止日历区域的触摸滑动穿透到页面滚动
+  },
+
   onTouchEnd(event: WechatMiniprogram.TouchEvent) {
     const touch = event.changedTouches[0];
     const endX = touch?.clientX ?? 0;
