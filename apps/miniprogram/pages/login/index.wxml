@@ -11,11 +11,13 @@
     <text class="field-label">昵称（可选）</text>
     <input
       class="field-input"
+      type="nickname"
       placeholder="例如：张小明"
       value="{{displayName}}"
       bindinput="onInput"
       maxlength="20"
     />
+    <text class="login-hint">微信登录时如未填写昵称，将自动获取微信昵称与头像。</text>
     <button class="btn-primary btn-block login-btn" loading="{{loading}}" bindtap="onWechatLogin">
       微信一键登录
     </button>

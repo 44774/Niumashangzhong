@@ -4,7 +4,7 @@ export function toUser(doc: any) {
   return {
     id: doc.openid ?? doc._id,
     displayName: doc.displayName,
-    avatarUrl: null,
+    avatarUrl: doc.avatarUrl ?? null,
     timezone: doc.timezone,
     locale: "zh-CN",
     defaultCity: doc.defaultCity ?? null,

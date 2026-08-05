@@ -25,12 +25,15 @@ import { readHolidayCache, sliceHolidayMap } from "../utils/holiday";
 import { setDefaultLocation } from "../stores/location";
 
 export const api = {
-  loginDev(displayName: string): Promise<AuthResponse> {
-    return request("/auth/dev", { method: "POST", data: { displayName } });
+  loginDev(displayName: string, avatarUrl?: string | null): Promise<AuthResponse> {
+    return request("/auth/dev", { method: "POST", data: { displayName, avatarUrl } });
   },
 
-  loginWechat(code: string, displayName?: string): Promise<AuthResponse> {
-    return request("/auth/wechat", { method: "POST", data: { code, displayName } });
+  loginWechat(code: string, displayName?: string, avatarUrl?: string | null): Promise<AuthResponse> {
+    return request("/auth/wechat", {
+      method: "POST",
+      data: { code, displayName, avatarUrl },
+    });
   },
 
   me(): Promise<User> {

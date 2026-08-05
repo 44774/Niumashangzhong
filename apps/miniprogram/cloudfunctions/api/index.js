@@ -114,7 +114,7 @@ var DEFAULT_TEMPLATES = [
     sortOrder: 4
   }
 ];
-async function ensureUserAndWorkspace(openid, displayName) {
+async function ensureUserAndWorkspace(openid, displayName, avatarUrl) {
   let user = null;
   try {
     const res = await db.collection("users").doc(openid).get();
@@ -128,6 +128,7 @@ async function ensureUserAndWorkspace(openid, displayName) {
       _id: openid,
       openid,
       displayName: (displayName == null ? void 0 : displayName.trim()) || "\u5FAE\u4FE1\u7528\u6237",
+      avatarUrl: avatarUrl ?? null,
       defaultCity: "\u6DF1\u5733",
       timezone: "Asia/Shanghai",
       createdAt: now,
@@ -136,6 +137,15 @@ async function ensureUserAndWorkspace(openid, displayName) {
     const userData = { ...user };
     delete userData._id;
     await db.collection("users").doc(openid).set({ data: userData });
+  } else {
+    const patch = {};
+    if (displayName == null ? void 0 : displayName.trim()) patch.displayName = displayName.trim();
+    if (avatarUrl !== void 0 && avatarUrl !== null) patch.avatarUrl = avatarUrl;
+    if (Object.keys(patch).length > 0) {
+      patch.updatedAt = now;
+      await db.collection("users").doc(openid).update({ data: patch });
+      user = { ...user, ...patch };
+    }
   }
   const workspaceRes = await db.collection("workspaces").where({ ownerOpenid: openid, type: "personal" }).limit(1).get();
   let workspace = workspaceRes.data[0];
@@ -230,7 +240,7 @@ function toUser(doc) {
   return {
     id: doc.openid ?? doc._id,
     displayName: doc.displayName,
-    avatarUrl: null,
+    avatarUrl: doc.avatarUrl ?? null,
     timezone: doc.timezone,
     locale: "zh-CN",
     defaultCity: doc.defaultCity ?? null,
@@ -1465,7 +1475,7 @@ exports.main = async (event) => {
       case "system.seed":
         return ok(await seedDemo(openid));
       case "auth.me": {
-        const ctx = await ensureUserAndWorkspace(openid, payload.displayName);
+        const ctx = await ensureUserAndWorkspace(openid, payload.displayName, payload.avatarUrl);
         return ok({ user: toUser(ctx.user), workspace: toWorkspace(ctx.workspace) });
       }
       case "workspaces.list": {

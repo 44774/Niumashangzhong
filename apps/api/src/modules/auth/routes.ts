@@ -12,6 +12,7 @@ import { shiftTemplates } from "../../db/schema.js";
 interface WechatBody {
   code?: string;
   displayName?: string;
+  avatarUrl?: string | null;
 }
 
 export async function authRoutes(
@@ -30,6 +31,7 @@ export async function authRoutes(
           properties: {
             code: { type: "string" },
             displayName: { type: "string", maxLength: 80 },
+            avatarUrl: { type: ["string", "null"] },
           },
         },
       },
@@ -43,7 +45,7 @@ export async function authRoutes(
         openid = body.code && body.code.startsWith("dev:") ? body.code : "dev-user";
       }
       const displayName = body.displayName?.trim() || (openid === "dev-user" ? "开发用户" : "微信用户");
-      const result = await getOrCreateAuthContext(db, openid, displayName);
+      const result = await getOrCreateAuthContext(db, openid, displayName, body.avatarUrl ?? null);
       const accessToken = app.jwt.sign({ sub: result.user.id });
       reply.code(200).send({ accessToken, ...result } satisfies AuthResponse);
     },
@@ -56,14 +58,17 @@ export async function authRoutes(
         tags: ["Auth"],
         body: {
           type: "object",
-          properties: { displayName: { type: "string", maxLength: 80 } },
+          properties: {
+            displayName: { type: "string", maxLength: 80 },
+            avatarUrl: { type: ["string", "null"] },
+          },
         },
       },
     },
     async (req, reply) => {
       const displayName = req.body?.displayName?.trim() || "开发用户";
       const openid = `dev:${displayName}`;
-      const result = await getOrCreateAuthContext(db, openid, displayName);
+      const result = await getOrCreateAuthContext(db, openid, displayName, req.body?.avatarUrl ?? null);
       const accessToken = app.jwt.sign({ sub: result.user.id });
       reply.code(200).send({ accessToken, ...result } satisfies AuthResponse);
     },
@@ -104,6 +109,7 @@ export async function getOrCreateAuthContext(
   db: Db,
   openid: string,
   displayName: string,
+  avatarUrl?: string | null,
 ): Promise<{ user: ReturnType<typeof toUser>; workspace: ReturnType<typeof toWorkspace> }> {
   let userRow = await db
     .select()
@@ -116,10 +122,21 @@ export async function getOrCreateAuthContext(
       .values({
         wechatOpenid: openid,
         displayName,
+        avatarUrl: avatarUrl ?? null,
         defaultCity: "深圳",
       })
       .returning();
     userRow = inserted;
+  } else if (avatarUrl !== undefined && avatarUrl !== null) {
+    const existing = userRow[0];
+    if (!existing) {
+      throw new AppError("INTERNAL", "用户创建失败", 500);
+    }
+    await db
+      .update(users)
+      .set({ avatarUrl, updatedAt: new Date() })
+      .where(and(eq(users.id, existing.id), isNull(users.deletedAt)));
+    existing.avatarUrl = avatarUrl;
   }
   const user = userRow[0];
   if (!user) {

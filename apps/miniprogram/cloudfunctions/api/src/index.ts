@@ -32,7 +32,7 @@ exports.main = async (event: any) => {
       case "system.seed":
         return ok(await seedDemo(openid));
       case "auth.me": {
-        const ctx = await ensureUserAndWorkspace(openid, payload.displayName);
+        const ctx = await ensureUserAndWorkspace(openid, payload.displayName, payload.avatarUrl);
         return ok({ user: toUser(ctx.user), workspace: toWorkspace(ctx.workspace) });
       }
       case "workspaces.list": {

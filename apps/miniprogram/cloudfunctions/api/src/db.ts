@@ -87,6 +87,7 @@ export interface UserDoc {
   _id: string;
   openid: string;
   displayName: string;
+  avatarUrl: string | null;
   defaultCity: string;
   timezone: string;
   createdAt: string;
@@ -106,6 +107,7 @@ export interface WorkspaceDoc {
 export async function ensureUserAndWorkspace(
   openid: string,
   displayName?: string,
+  avatarUrl?: string | null,
 ): Promise<{ user: UserDoc; workspace: WorkspaceDoc }> {
   let user: UserDoc | null = null;
   try {
@@ -120,6 +122,7 @@ export async function ensureUserAndWorkspace(
       _id: openid,
       openid,
       displayName: displayName?.trim() || "微信用户",
+      avatarUrl: avatarUrl ?? null,
       defaultCity: "深圳",
       timezone: "Asia/Shanghai",
       createdAt: now,
@@ -128,6 +131,15 @@ export async function ensureUserAndWorkspace(
     const userData = { ...user };
     delete (userData as { _id?: string })._id;
     await db.collection("users").doc(openid).set({ data: userData });
+  } else {
+    const patch: Record<string, unknown> = {};
+    if (displayName?.trim()) patch.displayName = displayName.trim();
+    if (avatarUrl !== undefined && avatarUrl !== null) patch.avatarUrl = avatarUrl;
+    if (Object.keys(patch).length > 0) {
+      patch.updatedAt = now;
+      await db.collection("users").doc(openid).update({ data: patch });
+      user = { ...user, ...patch };
+    }
   }
 
   const workspaceRes = await db

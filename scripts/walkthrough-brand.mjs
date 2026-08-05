@@ -63,6 +63,10 @@ console.log(
     appName: await p.data("appName"),
     version: await p.data("version"),
     footerText: (await p.$(".version")) ? await (await p.$(".version")).text() : null,
+    user: (await p.data("user")) && {
+      displayName: (await p.data("user")).displayName,
+      avatarUrl: (await p.data("user")).avatarUrl,
+    },
   }),
 );
 await miniProgram.screenshot({ path: join(shotDir, "02-me-brand.png") });

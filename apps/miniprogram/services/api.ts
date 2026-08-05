@@ -12,8 +12,10 @@ function current() {
 }
 
 export const api = {
-  loginDev: (displayName: string) => current().loginDev(displayName),
-  loginWechat: (code: string, displayName?: string) => current().loginWechat(code, displayName),
+  loginDev: (displayName: string, avatarUrl?: string | null) =>
+    current().loginDev(displayName, avatarUrl),
+  loginWechat: (code: string, displayName?: string, avatarUrl?: string | null) =>
+    current().loginWechat(code, displayName, avatarUrl),
   me: () => current().me(),
   workspaces: () => current().workspaces(),
   shiftTemplates: (activeOnly?: boolean) => current().shiftTemplates(activeOnly),

@@ -42,6 +42,7 @@ paths:
               properties:
                 code: {type: string}
                 displayName: {type: string, maxLength: 80}
+                avatarUrl: {type: [string, 'null'], format: uri}
       responses:
         '200':
           description: 登录成功
@@ -60,6 +61,7 @@ paths:
               type: object
               properties:
                 displayName: {type: string, maxLength: 80}
+                avatarUrl: {type: [string, 'null'], format: uri}
       responses:
         '200':
           description: 登录成功

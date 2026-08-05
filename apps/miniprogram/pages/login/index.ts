@@ -3,11 +3,33 @@ import { USE_CLOUDBASE } from "../../config";
 import { setSession } from "../../stores/session";
 import { APP_NAME } from "../../utils/version";
 
+interface WechatProfile {
+  nickName: string;
+  avatarUrl: string;
+}
+
 function wxLoginCode(): Promise<string> {
   return new Promise((resolve, reject) => {
     wx.login({
       success: (res) => resolve(res.code),
       fail: () => reject(new Error("微信登录失败，请重试")),
+    });
+  });
+}
+
+function fetchWechatProfile(): Promise<WechatProfile | null> {
+  return new Promise((resolve) => {
+    wx.getUserProfile({
+      desc: "用于完善个人资料",
+      success: (res) => {
+        const info = res.userInfo;
+        resolve(
+          info
+            ? { nickName: info.nickName || "", avatarUrl: info.avatarUrl || "" }
+            : null,
+        );
+      },
+      fail: () => resolve(null),
     });
   });
 }
@@ -27,16 +49,26 @@ Page({
     if (this.data.loading) return;
     this.setData({ loading: true });
     try {
+      // 先取微信资料（需紧跟用户点击手势），再获取登录 code
+      let name = this.data.displayName.trim() || undefined;
+      let avatarUrl: string | null | undefined;
+      if (!name) {
+        // 未输入自定义昵称时，自动获取微信昵称与头像
+        const profile = await fetchWechatProfile();
+        if (profile) {
+          name = profile.nickName.trim() || undefined;
+          avatarUrl = profile.avatarUrl || null;
+        }
+      }
       let code = "";
       try {
         code = await wxLoginCode();
       } catch {
         code = "";
       }
-      const name = this.data.displayName.trim() || undefined;
       const result = code
-        ? await api.loginWechat(code, name)
-        : await api.loginDev(name ?? "微信用户");
+        ? await api.loginWechat(code, name, avatarUrl)
+        : await api.loginDev(name ?? "微信用户", avatarUrl);
       setSession(result.accessToken, result.user, result.workspace);
       wx.switchTab({ url: "/pages/calendar/index" });
     } catch (err) {

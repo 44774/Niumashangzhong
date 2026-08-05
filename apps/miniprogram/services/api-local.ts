@@ -77,11 +77,11 @@ interface LocalInstance extends ScheduleInstance {
   updatedAt: string;
 }
 
-function localUser(displayName?: string): User {
+function localUser(displayName?: string, avatarUrl?: string | null): User {
   return {
     id: "local-user",
     displayName: displayName?.trim() || "本地用户",
-    avatarUrl: null,
+    avatarUrl: avatarUrl ?? null,
     timezone: "Asia/Shanghai",
     locale: "zh-CN",
     defaultCity: "深圳",
@@ -139,15 +139,19 @@ function toInstance(doc: LocalInstance): ScheduleInstance {
 }
 
 export const api = {
-  async loginDev(displayName?: string): Promise<AuthResponse> {
-    const user = localUser(displayName);
+  async loginDev(displayName?: string, avatarUrl?: string | null): Promise<AuthResponse> {
+    const user = localUser(displayName, avatarUrl);
     const workspace = localWorkspace();
     setLocalSession(user, workspace);
     return { accessToken: "local-token", user, workspace };
   },
 
-  async loginWechat(_code?: string, displayName?: string): Promise<AuthResponse> {
-    return this.loginDev(displayName);
+  async loginWechat(
+    _code?: string,
+    displayName?: string,
+    avatarUrl?: string | null,
+  ): Promise<AuthResponse> {
+    return this.loginDev(displayName, avatarUrl);
   },
 
   async me(): Promise<User> {

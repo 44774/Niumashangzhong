@@ -27,9 +27,10 @@ import { callCloud } from "./cloud";
 
 const CLOUD_TOKEN = "cloud-token";
 
-async function authResult(displayName?: string): Promise<AuthResponse> {
+async function authResult(displayName?: string, avatarUrl?: string | null): Promise<AuthResponse> {
   const result = await callCloud<{ user: User; workspace: Workspace }>("auth.me", {
     displayName: displayName ?? "",
+    avatarUrl: avatarUrl ?? null,
   });
   setSession(CLOUD_TOKEN, result.user, result.workspace, "cloud");
   return { accessToken: CLOUD_TOKEN, ...result };
@@ -40,12 +41,16 @@ function ws<T>(action: string, payload: Record<string, unknown> = {}): Promise<T
 }
 
 export const api = {
-  async loginDev(displayName: string): Promise<AuthResponse> {
-    return authResult(displayName);
+  async loginDev(displayName: string, avatarUrl?: string | null): Promise<AuthResponse> {
+    return authResult(displayName, avatarUrl);
   },
 
-  async loginWechat(_code: string, displayName?: string): Promise<AuthResponse> {
-    return authResult(displayName);
+  async loginWechat(
+    _code: string,
+    displayName?: string,
+    avatarUrl?: string | null,
+  ): Promise<AuthResponse> {
+    return authResult(displayName, avatarUrl);
   },
 
   async me(): Promise<User> {
