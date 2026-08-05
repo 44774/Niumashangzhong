@@ -57,6 +57,7 @@ Page({
     error: false,
     errorMessage: "",
     touchStartX: 0,
+    touchStartY: 0,
   },
 
   onShow() {
@@ -277,14 +278,27 @@ Page({
   },
 
   onTouchStart(event: WechatMiniprogram.TouchEvent) {
-    this.setData({ touchStartX: event.touches[0]?.clientX ?? 0 });
+    const touch = event.touches[0];
+    this.setData({
+      touchStartX: touch?.clientX ?? 0,
+      touchStartY: touch?.clientY ?? 0,
+    });
   },
 
   onTouchEnd(event: WechatMiniprogram.TouchEvent) {
-    const endX = event.changedTouches[0]?.clientX ?? 0;
-    const delta = endX - this.data.touchStartX;
-    if (delta > 50) this.prevMonth();
-    else if (delta < -50) this.nextMonth();
+    const touch = event.changedTouches[0];
+    const endX = touch?.clientX ?? 0;
+    const endY = touch?.clientY ?? 0;
+    const deltaX = endX - this.data.touchStartX;
+    const deltaY = endY - this.data.touchStartY;
+    // 纵向滑动优先：上滑切到下个月，下滑切回上个月
+    if (Math.abs(deltaY) > Math.abs(deltaX) && Math.abs(deltaY) > 60) {
+      if (deltaY < 0) this.nextMonth();
+      else this.prevMonth();
+      return;
+    }
+    if (deltaX > 50) this.prevMonth();
+    else if (deltaX < -50) this.nextMonth();
   },
 
   onDateTap(event: WechatMiniprogram.CustomEvent<{ date: string }>) {
