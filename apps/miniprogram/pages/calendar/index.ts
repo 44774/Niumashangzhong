@@ -402,15 +402,29 @@ Page({
 
   measureMonthHeight() {
     wx.createSelectorQuery()
-      .select(".month-block")
-      .boundingClientRect((rect) => {
-        if (rect && rect.height > 0) {
+      .selectAll(".month-block")
+      .boundingClientRect((rects) => {
+        const list = Array.isArray(rects) ? rects : [];
+        if (list.length >= 2) {
+          // 真实步长 = 相邻两个月块顶部间距（含 margin），避免越滚越偏
+          const step = list[1].top - list[0].top;
+          if (step > 0) {
+            const index = this.data.months.findIndex(
+              (vm) => vm.key === keyOf(this.data.year, this.data.month),
+            );
+            this.setData({
+              monthHeight: step,
+              scrollTop: Math.max(0, index) * step,
+            });
+            correctionUntil = Date.now() + 300;
+          }
+        } else if (list.length === 1 && list[0]?.height > 0) {
           const index = this.data.months.findIndex(
             (vm) => vm.key === keyOf(this.data.year, this.data.month),
           );
           this.setData({
-            monthHeight: rect.height,
-            scrollTop: Math.max(0, index) * rect.height,
+            monthHeight: list[0].height,
+            scrollTop: Math.max(0, index) * list[0].height,
           });
           correctionUntil = Date.now() + 300;
         }
