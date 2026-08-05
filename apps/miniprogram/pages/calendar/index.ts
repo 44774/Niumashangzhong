@@ -57,6 +57,8 @@ const MAX_MONTHS = 25;
 let lastScheduledRuleKey = "";
 let lastScrollTop = 0;
 let correctionUntil = 0;
+let snappingUntil = 0;
+let idleTimer: ReturnType<typeof setTimeout> | null = null;
 const loadingMonths = new Map<string, Promise<void>>();
 
 function monthStart(year: number, month: number): string {
@@ -417,9 +419,15 @@ Page({
   },
 
   onScroll(event: WechatMiniprogram.ScrollViewScroll) {
+    lastScrollTop = event.detail.scrollTop;
+    // 滚动停止防抖：停止约 300ms 后自动回正到月份边界
+    if (idleTimer) clearTimeout(idleTimer);
+    idleTimer = setTimeout(() => {
+      idleTimer = null;
+      this.snapToMonth();
+    }, 300);
     // 定位修正生效期间忽略中间滚动事件，避免级联扩展
     if (Date.now() < correctionUntil) return;
-    lastScrollTop = event.detail.scrollTop;
     const height = this.data.monthHeight;
     if (!height || this.data.months.length === 0) return;
     const topIndex = Math.max(
@@ -428,6 +436,12 @@ Page({
     );
     const top = this.data.months[topIndex];
     if (!top) return;
+    this.applyTopMonth(top);
+    // 滚动中持续加载前后 3 个月的数据（不增删 DOM）
+    this.preloadNearby(top);
+  },
+
+  applyTopMonth(top: MonthVM) {
     if (top.key !== keyOf(this.data.year, this.data.month)) {
       this.setData({
         year: top.year,
@@ -438,8 +452,33 @@ Page({
       this.updateShowBackToday();
       this.updateAnchorLegend();
     }
-    // 滚动中持续加载前后 3 个月的数据（不增删 DOM）
-    this.preloadNearby(top);
+  },
+
+  /** 滚动停止后自动回正：吸附到最近的月份边界 */
+  onScrollEnd() {
+    if (idleTimer) {
+      clearTimeout(idleTimer);
+      idleTimer = null;
+    }
+    this.snapToMonth();
+  },
+
+  snapToMonth() {
+    if (Date.now() < snappingUntil || Date.now() < correctionUntil) return;
+    const height = this.data.monthHeight;
+    if (!height || this.data.months.length === 0) return;
+    const index = Math.max(
+      0,
+      Math.min(this.data.months.length - 1, Math.round(lastScrollTop / height)),
+    );
+    const target = index * height;
+    if (Math.abs(lastScrollTop - target) > 2) {
+      snappingUntil = Date.now() + 400;
+      lastScrollTop = target;
+      this.setData({ scrollTop: target });
+      const month = this.data.months[index];
+      if (month) this.applyTopMonth(month);
+    }
   },
 
   onScrollToUpper() {

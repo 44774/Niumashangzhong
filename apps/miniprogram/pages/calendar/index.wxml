@@ -22,7 +22,9 @@
       enhanced
       show-scrollbar="{{false}}"
       scroll-top="{{scrollTop}}"
+      scroll-with-animation="{{true}}"
       bindscroll="onScroll"
+      bindscrollend="onScrollEnd"
       bindscrolltoupper="onScrollToUpper"
       bindscrolltolower="onScrollToLower"
     >
