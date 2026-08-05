@@ -1,4 +1,4 @@
-<view class="page">
+<view class="page calendar-page">
   <view class="row-between month-bar">
     <view class="row month-nav">
       <text class="month-arrow" bindtap="prevMonth">‹</text>
@@ -12,68 +12,66 @@
     </view>
   </view>
 
-  <block wx:if="{{loading}}">
-    <skeleton variant="calendar" />
-  </block>
-  <block wx:else>
+  <view class="month-list">
     <view
-      class="calendar-wrap"
-      bindtouchstart="onTouchStart"
-      bindtouchend="onTouchEnd"
-      catchtouchmove="onTouchMove"
+      wx:for="{{months}}"
+      wx:key="key"
+      class="month-block"
     >
       <calendar-month
-        cells="{{cells}}"
+        cells="{{item.cells}}"
         selected-date="{{selectedDate}}"
-        shift-map="{{shiftMap}}"
-        legend="{{legend}}"
+        shift-map="{{item.shiftMap}}"
+        legend="{{item.legend}}"
+        loading="{{item.loading}}"
         bind:datetap="onDateTap"
         bind:datelongpress="onDateLongPress"
       />
-      <view class="back-today-btn" wx:if="{{showBackToday}}" bindtap="goToday">今天</view>
     </view>
+  </view>
 
-    <view class="section-gap"></view>
-    <view class="card today-card">
-      <view class="row-between">
-        <text class="title-card">{{selectedTitle}}</text>
-        <text class="text-tertiary">{{selectedLabel}}</text>
-      </view>
-      <error-state wx:if="{{error}}" message="{{errorMessage}}" bind:retry="load" />
-      <empty-state
-        wx:elif="{{!selectedSummary}}"
-        title="{{selectedLabel}} 还没有排班"
-        desc="添加一个班次，让工作安排一目了然"
-        action-text="添加排班"
-        bind:action="addTodaySchedule"
-      />
-      <block wx:else>
-        <view class="row-between today-main">
-          <shift-badge
-            name="{{selectedSummary.shiftSnapshot.name}}"
-            short-name="{{selectedSummary.shiftSnapshot.shortName}}"
-            color="{{selectedSummary.shiftSnapshot.color}}"
-            size="lg"
-          />
-          <text class="today-time">{{selectedTimeText}}</text>
-        </view>
-        <view class="today-meta">
-          <text wx:if="{{selectedLocation}}">{{selectedLocation}}</text>
-          <text wx:if="{{selectedDuration}}">{{selectedDuration}}</text>
-        </view>
-        <view class="weather-line" wx:if="{{todayWeather}}">
-          <text class="weather-condition">{{todayWeather.conditionText}}</text>
-          <text class="weather-temp">{{todayWeather.temperatureMin}}~{{todayWeather.temperatureMax}}°C</text>
-          <text wx:if="{{todayWeather.precipitationProbability != null}}" class="weather-rain">降水 {{todayWeather.precipitationProbability}}%</text>
-        </view>
-        <view class="weather-line" wx:elif="{{weatherError}}">
-          <text class="weather-fallback">暂时无法获取天气，不影响查看班表</text>
-        </view>
-        <view class="row today-actions">
-          <button class="btn-secondary today-action" bindtap="changeToday">临时改班</button>
-          <button class="btn-secondary today-action" bindtap="shareToday">分享班表</button>
-        </view>
-      </block>
+  <view class="section-gap"></view>
+  <view class="card today-card">
+    <view class="row-between">
+      <text class="title-card">{{selectedTitle}}</text>
+      <text class="text-tertiary">{{selectedLabel}}</text>
     </view>
-  </block>
+    <error-state wx:if="{{error}}" message="{{errorMessage}}" bind:retry="onPullDownRefresh" />
+    <empty-state
+      wx:elif="{{!selectedSummary}}"
+      title="{{selectedLabel}} 还没有排班"
+      desc="添加一个班次，让工作安排一目了然"
+      action-text="添加排班"
+      bind:action="addTodaySchedule"
+    />
+    <block wx:else>
+      <view class="row-between today-main">
+        <shift-badge
+          name="{{selectedSummary.shiftSnapshot.name}}"
+          short-name="{{selectedSummary.shiftSnapshot.shortName}}"
+          color="{{selectedSummary.shiftSnapshot.color}}"
+          size="lg"
+        />
+        <text class="today-time">{{selectedTimeText}}</text>
+      </view>
+      <view class="today-meta">
+        <text wx:if="{{selectedLocation}}">{{selectedLocation}}</text>
+        <text wx:if="{{selectedDuration}}">{{selectedDuration}}</text>
+      </view>
+      <view class="weather-line" wx:if="{{todayWeather}}">
+        <text class="weather-condition">{{todayWeather.conditionText}}</text>
+        <text class="weather-temp">{{todayWeather.temperatureMin}}~{{todayWeather.temperatureMax}}°C</text>
+        <text wx:if="{{todayWeather.precipitationProbability != null}}" class="weather-rain">降水 {{todayWeather.precipitationProbability}}%</text>
+      </view>
+      <view class="weather-line" wx:elif="{{weatherError}}">
+        <text class="weather-fallback">暂时无法获取天气，不影响查看班表</text>
+      </view>
+      <view class="row today-actions">
+        <button class="btn-secondary today-action" bindtap="changeToday">临时改班</button>
+        <button class="btn-secondary today-action" bindtap="shareToday">分享班表</button>
+      </view>
+    </block>
+  </view>
+
+  <view class="back-today-btn" wx:if="{{showBackToday}}" bindtap="goToday">今天</view>
 </view>

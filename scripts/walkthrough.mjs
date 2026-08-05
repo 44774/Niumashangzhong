@@ -49,19 +49,21 @@ p = await page("login→calendar");
 // 2. 日历
 await sleep(2500);
 p = await page("calendar");
+const months = await p.data("months");
+const monthValue = await p.data("monthValue");
+const anchor = months.find((m) => m.key === monthValue) ?? months[3] ?? {};
 console.log(
   "calendar data:",
   JSON.stringify({
     monthLabel: await p.data("monthLabel"),
-    cells: (await p.data("cells"))?.length,
-    legend: (await p.data("legend"))?.length,
-    legendColor: (await p.data("legend"))?.[0]?.color,
-    shiftColor: Object.values(await p.data("shiftMap"))?.[0]?.[0]?.color,
-    todaySummary: (await p.data("todaySummary"))?.shiftSnapshot?.name ?? null,
-    changeDates: await p.data("changeDates"),
+    cells: anchor.cells?.length,
+    legend: anchor.legend?.length,
+    legendColor: anchor.legend?.[0]?.color,
+    shiftColor: Object.values(anchor.shiftMap ?? {})?.[0]?.[0]?.color,
+    todaySummary: (await p.data("selectedSummary"))?.shiftSnapshot?.name ?? null,
     todayWeather: (await p.data("todayWeather"))?.conditionText ?? null,
     error: await p.data("error"),
-    loading: await p.data("loading"),
+    loading: (await p.data("months")).some((m) => m.loading),
   }),
 );
 await miniProgram.screenshot({ path: join(shotDir, "02-calendar.png") });
@@ -109,7 +111,7 @@ console.log(
     selectedDate: await p.data("selectedDate"),
     selectedSummary: (await p.data("selectedSummary"))?.shiftSnapshot?.name ?? null,
     selectedTitle: await p.data("selectedTitle"),
-    scheduleList: (await p.data("scheduleList"))?.length,
+    scheduleList: anchor.schedules?.length,
     todayWeather: (await p.data("todayWeather"))?.conditionText ?? null,
   }),
 );

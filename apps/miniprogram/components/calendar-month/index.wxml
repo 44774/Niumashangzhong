@@ -6,14 +6,14 @@
     <view
       wx:for="{{cells}}"
       wx:key="date"
-      class="day-cell {{item.hasShift ? '' : 'empty'}} {{item.inMonth ? '' : 'dim'}} {{item.isToday ? 'today' : ''}} {{item.date === selectedDate ? 'selected' : ''}}"
+      class="day-cell {{loading ? '' : (item.hasShift ? '' : 'empty')}} {{item.inMonth ? '' : 'dim'}} {{item.isToday ? 'today' : ''}} {{item.date === selectedDate ? 'selected' : ''}}"
       data-date="{{item.date}}"
       bindtap="onTap"
       bindlongpress="onLongPress"
     >
       <text class="day-number">{{item.day}}</text>
-      <text wx:if="{{item.hasChange}}" class="change-mark">改</text>
-      <view class="day-shifts">
+      <text wx:if="{{!loading && item.hasChange}}" class="change-mark">改</text>
+      <view wx:if="{{!loading}}" class="day-shifts">
         <text
           wx:for="{{shiftMap[item.date] || []}}"
           wx:for-item="shift"
@@ -22,11 +22,15 @@
           style="background: {{shift.color}}; color: #ffffff;"
         >{{shift.shortName}}<text wx:if="{{shift.overtime}}" class="ot-tag">加</text></text>
       </view>
+      <view wx:else class="cell-sk"></view>
     </view>
   </view>
-  <view class="legend">
+  <view class="legend" wx:if="{{!loading && legend.length > 0}}">
     <text wx:for="{{legend}}" wx:key="name" class="legend-item" style="color: {{item.color}};">
       <text class="legend-dot" style="background: {{item.color}}"></text>{{item.shortName}}
     </text>
+  </view>
+  <view class="legend" wx:elif="{{loading}}">
+    <view class="legend-sk" wx:for="{{skItems}}" wx:key="*this"></view>
   </view>
 </view>

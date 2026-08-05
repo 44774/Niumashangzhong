@@ -1,3 +1,7 @@
+.calendar-page {
+  padding-bottom: calc(160rpx + env(safe-area-inset-bottom));
+}
+
 .month-bar {
   margin-bottom: 24rpx;
 }
@@ -43,14 +47,14 @@
   border: none;
 }
 
-.calendar-wrap {
-  position: relative;
+.month-block {
+  margin-bottom: 24rpx;
 }
 
 .back-today-btn {
-  position: absolute;
-  right: 16rpx;
-  bottom: 16rpx;
+  position: fixed;
+  right: 32rpx;
+  bottom: calc(180rpx + env(safe-area-inset-bottom));
   width: 96rpx;
   height: 96rpx;
   border-radius: 50%;
@@ -64,6 +68,10 @@
   justify-content: center;
   box-shadow: var(--wc-shadow-sm);
   z-index: var(--wc-zIndex-sticky);
+}
+
+.today-card {
+  margin-bottom: 24rpx;
 }
 
 .month-bar .row {
