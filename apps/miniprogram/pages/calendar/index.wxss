@@ -4,11 +4,15 @@
 
 .month-nav {
   gap: 20rpx;
+  flex: 1;
+  min-width: 0;
 }
 
 .month-label {
   font-size: 36rpx;
   font-weight: 700;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .month-arrow {
