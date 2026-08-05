@@ -420,8 +420,6 @@ Page({
     // 定位修正生效期间忽略中间滚动事件，避免级联扩展
     if (Date.now() < correctionUntil) return;
     lastScrollTop = event.detail.scrollTop;
-    // 双向同步：避免受控 scroll-top 把用户滚动拉回旧位置
-    this.setData({ scrollTop: event.detail.scrollTop });
     const height = this.data.monthHeight;
     if (!height || this.data.months.length === 0) return;
     const topIndex = Math.max(
