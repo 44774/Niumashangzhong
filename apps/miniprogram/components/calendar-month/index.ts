@@ -14,10 +14,6 @@ Component({
     loading: { type: Boolean, value: false },
   },
 
-  data: {
-    skItems: [0, 1, 2, 3],
-  },
-
   methods: {
     onTap(event: WechatMiniprogram.TouchEvent) {
       this.triggerEvent("datetap", { date: event.currentTarget.dataset.date as string });

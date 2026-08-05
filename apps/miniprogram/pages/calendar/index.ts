@@ -86,6 +86,9 @@ Page({
     months: [] as MonthVM[],
     scrollTop: 0,
     monthHeight: 0,
+    legend: [] as ShiftTemplate[],
+    legendLoading: true,
+    legendSk: [0, 1, 2, 3],
     selectedDate: "",
     selectedSummary: null as ScheduleInstance | null,
     selectedLabel: "",
@@ -157,6 +160,8 @@ Page({
       selectedDate: today,
       showBackToday: false,
       error: false,
+      legend: months[PRELOAD_MONTHS]?.legend ?? [],
+      legendLoading: Boolean(months[PRELOAD_MONTHS]?.loading),
     });
     wx.nextTick(() => {
       this.measureMonthHeight();
@@ -275,6 +280,21 @@ Page({
       loaded: true,
       error: false,
     });
+    this.updateAnchorLegend();
+  },
+
+  updateAnchorLegend() {
+    const months = this.data.months;
+    const top =
+      months.find((m) => m.key === keyOf(this.data.year, this.data.month)) ?? months[0];
+    const legend =
+      top?.legend && top.legend.length > 0
+        ? top.legend
+        : (months.find((m) => m.legend.length > 0)?.legend ?? []);
+    this.setData({
+      legend,
+      legendLoading: Boolean(top?.loading) && legend.length === 0,
+    });
   },
 
   maybeScheduleRuleJobs() {
@@ -366,6 +386,18 @@ Page({
     }
   },
 
+  /** 滚动中只预加载已渲染月份的数据，不修改 DOM 布局，避免滚动跳变 */
+  preloadNearby(top: MonthVM) {
+    for (let delta = -PRELOAD_MONTHS; delta <= PRELOAD_MONTHS; delta += 1) {
+      const ym = addMonths(top.year, top.month, delta);
+      const key = keyOf(ym.year, ym.month);
+      const vm = this.data.months.find((m) => m.key === key);
+      if (vm && !vm.loaded) {
+        void this.loadMonth(vm);
+      }
+    }
+  },
+
   measureMonthHeight() {
     wx.createSelectorQuery()
       .select(".month-block")
@@ -406,9 +438,22 @@ Page({
         monthValue: top.key,
       });
       this.updateShowBackToday();
+      this.updateAnchorLegend();
     }
-    // 滚动中持续补齐并加载前后 3 个月
-    this.ensureWindow(top.year, top.month);
+    // 滚动中持续加载前后 3 个月的数据（不增删 DOM）
+    this.preloadNearby(top);
+  },
+
+  onScrollToUpper() {
+    if (Date.now() < correctionUntil) return;
+    const first = this.data.months[0];
+    if (first) this.ensureWindow(first.year, first.month);
+  },
+
+  onScrollToLower() {
+    if (Date.now() < correctionUntil) return;
+    const last = this.data.months[this.data.months.length - 1];
+    if (last) this.ensureWindow(last.year, last.month);
   },
 
   changeMonth(delta: number) {
