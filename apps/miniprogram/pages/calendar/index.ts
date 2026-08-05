@@ -188,6 +188,8 @@ Page({
   updateSelectedSummary() {
     const date = this.data.selectedDate;
     const summary = this.data.scheduleList.find((s) => s.businessDate === date) ?? null;
+    const today = todayString();
+    const { year: todayYear, month: todayMonth } = parseDate(today);
     this.setData({
       selectedSummary: summary,
       selectedLabel: `${date} ${weekdayCN(date)}`,
@@ -195,7 +197,8 @@ Page({
       selectedTimeText: summary ? formatTimeRange(summary.shiftSnapshot) ?? "休息" : "",
       selectedLocation: summary?.locationSnapshot?.name ?? "",
       selectedDuration: summary ? durationLabel(summary.shiftSnapshot) : "",
-      showBackToday: date !== todayString(),
+      showBackToday:
+        date !== today || this.data.year !== todayYear || this.data.month !== todayMonth,
     });
   },
 

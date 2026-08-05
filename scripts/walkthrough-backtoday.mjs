@@ -28,7 +28,8 @@ const read = async () => ({
   showBackToday: await p.data("showBackToday"),
 });
 
-console.log("初始（今天）:", JSON.stringify(await read()));
+const initial = await read();
+console.log("初始（今天）:", JSON.stringify(initial));
 
 // 点击非今日日期
 const future = today.slice(0, 8) + String((Number(today.slice(8)) % 28) + 1).padStart(2, "0");
@@ -43,11 +44,21 @@ console.log("选中非今日并返回:", JSON.stringify(await read()));
 await p.callMethod("goToday");
 await sleep(1500);
 p = await miniProgram.currentPage();
-console.log("点击回到今天后:", JSON.stringify(await read()));
+const backToday = await read();
+console.log("点击回到今天后:", JSON.stringify(backToday));
+
+// 切到非当前月（即使选中仍是今天）也应显示
+await p.callMethod("nextMonth");
+await sleep(2000);
+p = await miniProgram.currentPage();
+const afterMonth = await read();
+console.log("切到下一月后:", JSON.stringify(afterMonth));
 
 const ok =
-  (await p.data("showBackToday")) === false &&
-  (await p.data("selectedDate")) === today;
+  initial.showBackToday === false &&
+  backToday.showBackToday === false &&
+  backToday.selectedDate === today &&
+  afterMonth.showBackToday === true;
 console.log(ok ? "验证通过：仅非今日显示按钮，点击后回到今天并隐藏" : "验证未通过");
 await miniProgram.close();
 process.exit(ok ? 0 : 1);
