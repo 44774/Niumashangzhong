@@ -5,7 +5,7 @@
 
 .day-cell {
   width: 14.2857%;
-  min-height: 120rpx;
+  height: 140rpx;
   padding: 8rpx 4rpx;
   border-radius: var(--wc-radius-md);
   border: 1rpx solid var(--wc-color-border-default);
@@ -14,6 +14,7 @@
   flex-direction: column;
   align-items: center;
   position: relative;
+  overflow: hidden;
 }
 
 .day-cell.empty {
