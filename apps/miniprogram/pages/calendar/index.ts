@@ -65,6 +65,10 @@ Page({
     errorMessage: "",
     touchStartX: 0,
     touchStartY: 0,
+    dragOffset: 0,
+    dragTransition: "none",
+    dragHeight: 240,
+    dragAnimating: false,
   },
 
   onShow() {
@@ -111,6 +115,9 @@ Page({
       })),
       selectedDate: today,
       showBackToday: false,
+    });
+    wx.nextTick(() => {
+      this.measureDragHeight();
     });
   },
 
@@ -263,6 +270,36 @@ Page({
     this.load();
   },
 
+  measureDragHeight() {
+    wx.createSelectorQuery()
+      .select(".calendar-drag")
+      .boundingClientRect((rect) => {
+        if (rect && rect.height > 0) {
+          this.setData({ dragHeight: rect.height });
+        }
+      })
+      .exec();
+  },
+
+  /** 平滑切换到下个月（direction=1）或上个月（direction=-1） */
+  animateMonthSwitch(direction: number) {
+    if (this.data.dragAnimating) return;
+    const height = this.data.dragHeight || 240;
+    const outOffset = -direction * height;
+    this.setData({ dragAnimating: true, dragTransition: "transform 0.22s ease", dragOffset: outOffset });
+    setTimeout(() => {
+      this.changeMonth(direction);
+      // 新月份从反方向滑入
+      this.setData({ dragTransition: "none", dragOffset: -outOffset });
+      wx.nextTick(() => {
+        this.setData({ dragTransition: "transform 0.22s ease", dragOffset: 0 });
+        setTimeout(() => {
+          this.setData({ dragAnimating: false, dragTransition: "none" });
+        }, 240);
+      });
+    }, 240);
+  },
+
   onMonthPickerChange(event: WechatMiniprogram.PickerChange) {
     const value = String(event.detail.value);
     const [y, m] = value.split("-").map(Number);
@@ -283,11 +320,11 @@ Page({
   },
 
   prevMonth() {
-    this.changeMonth(-1);
+    this.animateMonthSwitch(-1);
   },
 
   nextMonth() {
-    this.changeMonth(1);
+    this.animateMonthSwitch(1);
   },
 
   goToday() {
@@ -300,31 +337,48 @@ Page({
   },
 
   onTouchStart(event: WechatMiniprogram.TouchEvent) {
+    if (this.data.dragAnimating) return;
     const touch = event.touches[0];
     this.setData({
       touchStartX: touch?.clientX ?? 0,
       touchStartY: touch?.clientY ?? 0,
+      dragOffset: 0,
+      dragTransition: "none",
     });
   },
 
-  onTouchMove() {
-    // 阻止日历区域触摸滑动穿透到页面滚动
+  onTouchMove(event: WechatMiniprogram.TouchEvent) {
+    if (this.data.dragAnimating) return;
+    const touch = event.touches[0];
+    if (!touch) return;
+    const deltaY = touch.clientY - this.data.touchStartY;
+    const deltaX = touch.clientX - this.data.touchStartX;
+    // 纵向主导时月历跟随手指（带阻尼）
+    if (Math.abs(deltaY) > Math.abs(deltaX)) {
+      this.setData({ dragOffset: deltaY * 0.5 });
+    }
   },
 
   onTouchEnd(event: WechatMiniprogram.TouchEvent) {
+    if (this.data.dragAnimating) return;
     const touch = event.changedTouches[0];
     const endX = touch?.clientX ?? 0;
     const endY = touch?.clientY ?? 0;
     const deltaX = endX - this.data.touchStartX;
     const deltaY = endY - this.data.touchStartY;
-    // 纵向滑动优先：上滑切到下个月，下滑切回上个月
     if (Math.abs(deltaY) > Math.abs(deltaX) && Math.abs(deltaY) > 60) {
-      if (deltaY < 0) this.nextMonth();
-      else this.prevMonth();
+      // 纵向：跟手后松手，滑动切换到月份
+      this.animateMonthSwitch(deltaY < 0 ? 1 : -1);
       return;
     }
-    if (deltaX > 50) this.prevMonth();
-    else if (deltaX < -50) this.nextMonth();
+    if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 50) {
+      // 横向滑动保留切换
+      if (deltaX > 50) this.prevMonth();
+      else if (deltaX < -50) this.nextMonth();
+      return;
+    }
+    // 未达阈值：回弹
+    this.setData({ dragTransition: "transform 0.2s ease", dragOffset: 0 });
   },
 
   onDateTap(event: WechatMiniprogram.CustomEvent<{ date: string }>) {

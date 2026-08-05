@@ -15,18 +15,23 @@
   <view
     class="calendar-wrap"
     bindtouchstart="onTouchStart"
-    bindtouchend="onTouchEnd"
     catchtouchmove="onTouchMove"
+    bindtouchend="onTouchEnd"
   >
-    <calendar-month
-      cells="{{cells}}"
-      selected-date="{{selectedDate}}"
-      shift-map="{{shiftMap}}"
-      legend="{{legend}}"
-      loading="{{loading}}"
-      bind:datetap="onDateTap"
-      bind:datelongpress="onDateLongPress"
-    />
+    <view
+      class="calendar-drag"
+      style="transform: translateY({{dragOffset}}px); transition: {{dragTransition}};"
+    >
+      <calendar-month
+        cells="{{cells}}"
+        selected-date="{{selectedDate}}"
+        shift-map="{{shiftMap}}"
+        legend="{{legend}}"
+        loading="{{loading}}"
+        bind:datetap="onDateTap"
+        bind:datelongpress="onDateLongPress"
+      />
+    </view>
     <view class="back-today-btn" wx:if="{{showBackToday}}" bindtap="goToday">今天</view>
   </view>
 

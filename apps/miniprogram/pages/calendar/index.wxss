@@ -45,6 +45,11 @@
 
 .calendar-wrap {
   position: relative;
+  overflow: hidden;
+}
+
+.calendar-drag {
+  will-change: transform;
 }
 
 .back-today-btn {
