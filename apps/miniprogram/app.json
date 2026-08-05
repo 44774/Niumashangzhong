@@ -17,6 +17,7 @@
     "pages/schedules/index"
   ],
   "requiredPrivateInfos": ["getLocation", "chooseLocation"],
+  "__usePrivacyCheck__": true,
   "permission": {
     "scope.userLocation": {
       "desc": "用于获取当前位置以查询天气"

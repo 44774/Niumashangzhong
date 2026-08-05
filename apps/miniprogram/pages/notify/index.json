@@ -1,6 +1,7 @@
 {
   "navigationBarTitleText": "提醒设置",
   "usingComponents": {
+    "privacy-popup": "/components/privacy-popup/index",
     "empty-state": "/components/empty-state/index",
     "error-state": "/components/error-state/index"
   }

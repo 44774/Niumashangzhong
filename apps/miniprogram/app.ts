@@ -1,9 +1,11 @@
 import { CLOUD_ENV_ID, USE_CLOUDBASE } from "./config";
 import { api } from "./services/api";
+import { registerPrivacyHandler } from "./services/privacy";
 import { getToken } from "./stores/session";
 
 App({
   onLaunch() {
+    registerPrivacyHandler();
     if (USE_CLOUDBASE) {
       wx.cloud.init({ env: CLOUD_ENV_ID, traceUser: true });
       if (getToken()) {

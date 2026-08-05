@@ -22,4 +22,6 @@
     </button>
     <text class="location-hint">位置仅用于查询天气与导航，不会出现在分享海报中（除非手动开启地点显示）。</text>
   </view>
+
+  <privacy-popup id="privacy-popup" />
 </view>

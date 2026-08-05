@@ -58,4 +58,6 @@
   </view>
 
   <button class="btn-primary btn-block" loading="{{saving}}" bindtap="save">保存设置</button>
+
+  <privacy-popup id="privacy-popup" />
 </view>

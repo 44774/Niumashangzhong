@@ -116,4 +116,6 @@
       bindtap="generate"
     >生成海报</button>
   </block>
+
+  <privacy-popup id="privacy-popup" />
 </view>

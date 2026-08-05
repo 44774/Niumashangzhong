@@ -1,3 +1,6 @@
 {
-  "navigationBarTitleText": "位置设置"
+  "navigationBarTitleText": "位置设置",
+  "usingComponents": {
+    "privacy-popup": "/components/privacy-popup/index"
+  }
 }

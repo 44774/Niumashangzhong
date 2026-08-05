@@ -24,6 +24,15 @@
   </view>
 
   <view class="card section">
+    <text class="title-card">信息的使用规则</text>
+    <text class="body">{{privacyRule}}</text>
+    <view class="privacy-item" wx:for="{{privacyItems}}" wx:key="title">
+      <text class="privacy-item-title">{{item.title}}</text>
+      <text class="privacy-item-desc">{{item.desc}}</text>
+    </view>
+  </view>
+
+  <view class="card section">
     <text class="title-card">使用须知</text>
     <view class="line">· 排班内容由你自行录入与维护，本工具仅提供日历展示与提醒，不构成工作安排依据。</view>
     <view class="line">· 天气与节假日信息仅供参考，请以单位通知为准。</view>

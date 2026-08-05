@@ -1,0 +1,22 @@
+<view wx:if="{{visible}}" class="privacy-mask" catchtouchmove="noop">
+  <view class="privacy-popup">
+    <text class="privacy-title">信息的使用规则</text>
+    <scroll-view scroll-y class="privacy-scroll">
+      <view class="privacy-intro">{{rule}}</view>
+      <view class="privacy-item" wx:for="{{items}}" wx:key="title">
+        <view class="privacy-item-title">{{item.title}}</view>
+        <view class="privacy-item-desc">{{item.desc}}</view>
+      </view>
+      <view class="privacy-contract" bindtap="onOpenContract">查看《用户隐私保护指引》</view>
+    </scroll-view>
+    <view class="privacy-actions">
+      <button class="privacy-btn privacy-disagree" bindtap="onDisagree">拒绝</button>
+      <button
+        id="agree-btn"
+        class="privacy-btn privacy-agree"
+        open-type="agreePrivacyAuthorization"
+        bindagreeprivacyauthorization="onAgree"
+      >同意</button>
+    </view>
+  </view>
+</view>

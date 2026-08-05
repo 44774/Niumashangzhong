@@ -1,6 +1,7 @@
 {
   "navigationBarTitleText": "分享班表",
   "usingComponents": {
+    "privacy-popup": "/components/privacy-popup/index",
     "error-state": "/components/error-state/index",
     "empty-state": "/components/empty-state/index"
   }
