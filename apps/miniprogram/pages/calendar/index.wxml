@@ -1,4 +1,4 @@
-<view class="page calendar-page">
+<view class="page">
   <view class="row-between month-bar">
     <view class="row month-nav">
       <text class="month-arrow" bindtap="prevMonth">‹</text>
@@ -12,46 +12,25 @@
     </view>
   </view>
 
-  <view class="calendar-area">
-    <view class="week-header">
-      <text wx:for="{{['一','二','三','四','五','六','日']}}" wx:key="*this" class="week-cell">{{item}}</text>
-    </view>
-    <scroll-view
-      class="calendar-scroll"
-      scroll-y
-      enhanced
-      show-scrollbar="{{false}}"
-      scroll-top="{{scrollTop}}"
-      scroll-with-animation="{{true}}"
-      bindscroll="onScroll"
-      bindscrollend="onScrollEnd"
-      bindscrolltoupper="onScrollToUpper"
-      bindscrolltolower="onScrollToLower"
+  <view
+    class="calendar-wrap"
+    bindtouchstart="onTouchStart"
+    catchtouchmove="onTouchMove"
+    bindtouchend="onTouchEnd"
+  >
+    <view
+      class="calendar-drag"
+      style="transform: translateY({{dragOffset}}px); transition: {{dragTransition}};"
     >
-      <view class="calendar-list">
-        <view
-          wx:for="{{months}}"
-          wx:key="key"
-          class="month-block"
-        >
-          <calendar-month
-            cells="{{item.cells}}"
-            selected-date="{{selectedDate}}"
-            shift-map="{{item.shiftMap}}"
-            loading="{{item.loading}}"
-            bind:datetap="onDateTap"
-            bind:datelongpress="onDateLongPress"
-          />
-        </view>
-      </view>
-    </scroll-view>
-    <view class="legend-bar" wx:if="{{legend.length > 0}}">
-      <text wx:for="{{legend}}" wx:key="name" class="legend-item" style="color: {{item.color}};">
-        <text class="legend-dot" style="background: {{item.color}}"></text>{{item.shortName}}
-      </text>
-    </view>
-    <view class="legend-bar" wx:elif="{{legendLoading}}">
-      <view class="legend-sk" wx:for="{{legendSk}}" wx:key="*this"></view>
+      <calendar-month
+        cells="{{cells}}"
+        selected-date="{{selectedDate}}"
+        shift-map="{{shiftMap}}"
+        legend="{{legend}}"
+        loading="{{loading}}"
+        bind:datetap="onDateTap"
+        bind:datelongpress="onDateLongPress"
+      />
     </view>
     <view class="back-today-btn" wx:if="{{showBackToday}}" bindtap="goToday">今天</view>
   </view>
@@ -62,7 +41,10 @@
       <text class="title-card">{{selectedTitle}}</text>
       <text class="text-tertiary">{{selectedLabel}}</text>
     </view>
-    <error-state wx:if="{{error}}" message="{{errorMessage}}" bind:retry="onPullDownRefresh" />
+    <block wx:if="{{loading}}">
+      <skeleton cards="1" rows="3" />
+    </block>
+    <error-state wx:elif="{{error}}" message="{{errorMessage}}" bind:retry="load" />
     <empty-state
       wx:elif="{{!selectedSummary}}"
       title="{{selectedLabel}} 还没有排班"

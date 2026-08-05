@@ -10,7 +10,12 @@ Component({
     cells: { type: Array, value: [] },
     selectedDate: { type: String, value: "" },
     shiftMap: { type: Object, value: {} },
+    legend: { type: Array, value: [] },
     loading: { type: Boolean, value: false },
+  },
+
+  data: {
+    skItems: [0, 1, 2, 3],
   },
 
   methods: {
