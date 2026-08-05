@@ -256,11 +256,15 @@ Page({
       year += 1;
     }
     const today = todayString();
+    const selectedDate = this.data.selectedDate.startsWith(`${year}-${pad2(month)}`)
+      ? this.data.selectedDate
+      : this.defaultDateForMonth(year, month);
     this.setData({
       year,
       month,
       monthLabel: monthLabel(year, month),
       monthValue: `${year}-${pad2(month)}`,
+      selectedDate,
       cells: buildMonthGrid(year, month, today).map((cell) => ({
         ...cell,
         hasShift: false,
@@ -268,6 +272,14 @@ Page({
       })),
     });
     this.load();
+  },
+
+  /** 切月默认日期：本月取今天，其他月份取当月 1 号 */
+  defaultDateForMonth(year: number, month: number): string {
+    const today = todayString();
+    const { year: todayYear, month: todayMonth } = parseDate(today);
+    if (year === todayYear && month === todayMonth) return today;
+    return `${year}-${pad2(month)}-01`;
   },
 
   measureDragHeight() {
@@ -305,11 +317,15 @@ Page({
     const [y, m] = value.split("-").map(Number);
     if (!y || !m || m < 1 || m > 12) return;
     const today = todayString();
+    const selectedDate = this.data.selectedDate.startsWith(`${y}-${pad2(m)}`)
+      ? this.data.selectedDate
+      : this.defaultDateForMonth(y, m);
     this.setData({
       year: y,
       month: m,
       monthLabel: monthLabel(y, m),
       monthValue: `${y}-${pad2(m)}`,
+      selectedDate,
       cells: buildMonthGrid(y, m, today).map((cell) => ({
         ...cell,
         hasShift: false,
