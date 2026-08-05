@@ -114,7 +114,8 @@ tcb fn deploy dispatcher   # 部署通知定时器
   `apps/miniprogram/utils/privacy-agreement.ts` 的 `PRIVACY_AGREEMENT_VERSION` +1，老用户下次进入会自动再次确认。
 - 微信订阅消息：提醒页授权后，`dispatcher` 通过 `subscribeMessage.send` 真实下发上班/天气提醒。配置步骤：
   在微信公众平台「订阅消息」中添加「上班提醒」模板（公共库没有天气提醒模板，天气提醒会自动复用上班提醒模板，
-  无需专门天气模板）→ 把模板 ID 填入云函数环境变量 `SUBSCRIBE_SHIFT_TEMPLATE_ID` →
+  无需专门天气模板）→ 把模板 ID 填入 `cloudbaserc.json` 的 `SUBSCRIBE_SHIFT_TEMPLATE_ID`
+  （仓库当前已配置 `PPRLh5y2F-_DVDDB-fpMxD5UKcnEqs1FzsZgWk4NZ6Y`，换账号发布时改为自己的模板 ID）→
   重新部署 `api` 与 `dispatcher` → 小程序「提醒」页点击「订阅提醒」。
   如日后有专用天气模板，可再填 `SUBSCRIBE_WEATHER_TEMPLATE_ID` 覆盖。
   一次性订阅消息发送后会失效，需再次订阅；开发环境用 `SUBSCRIBE_MINIPROGRAM_STATE=developer`，发布后改为 `formal`。
