@@ -24,12 +24,18 @@
 .tab-item.active {
   color: var(--wc-color-brand-primary);
   font-weight: 600;
-  background: var(--wc-color-surface-subtle);
-  border-radius: var(--wc-radius-pill);
-  margin: 14rpx 18rpx;
 }
 
 .tab-label {
-  line-height: 112rpx;
-  height: 112rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 60rpx;
+  line-height: 60rpx;
+  padding: 0 24rpx;
+  border-radius: var(--wc-radius-pill);
+}
+
+.tab-item.active .tab-label {
+  background: var(--wc-color-surface-subtle);
 }
