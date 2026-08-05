@@ -47,7 +47,7 @@
       <text class="title-card">生成预览（前 {{preview.length}} 天）</text>
       <view class="preview-list">
         <view class="row preview-row" wx:for="{{preview}}" wx:key="date">
-          <text class="preview-date">{{item.date.slice(5)}}</text>
+          <text class="preview-date">{{item.dateShort}}</text>
           <shift-badge
             name="{{item.name}}"
             short-name="{{item.name}}"

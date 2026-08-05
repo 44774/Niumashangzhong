@@ -140,7 +140,12 @@ Page({
       .filter((s) => s.shiftTemplateId)
       .map((s) => {
         const tpl = templateById.get(s.shiftTemplateId);
-        return { date: s.date, name: tpl?.name ?? "", color: tpl?.color ?? "#1F6FEB" };
+        return {
+          date: s.date,
+          dateShort: s.date.slice(5),
+          name: tpl?.name ?? "",
+          color: tpl?.color ?? "#1F6FEB",
+        };
       });
     this.setData({ preview });
   },

@@ -4,7 +4,7 @@
     <view class="location-box">
       <block wx:if="{{location}}">
         <text class="location-name">{{location.name}}</text>
-        <text class="location-coord">{{location.latitude.toFixed(4)}}, {{location.longitude.toFixed(4)}}</text>
+        <text class="location-coord">{{locationCoord}}</text>
       </block>
       <block wx:else>
         <text class="location-empty">尚未设置，将使用默认城市（深圳）</text>

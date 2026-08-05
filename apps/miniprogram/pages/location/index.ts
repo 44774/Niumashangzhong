@@ -6,6 +6,7 @@ import type { WeatherLocation } from "../../typings/api";
 Page({
   data: {
     location: null as WeatherLocation | null,
+    locationCoord: "",
     saving: false,
   },
 
@@ -14,15 +15,25 @@ Page({
       wx.reLaunch({ url: "/pages/login/index" });
       return;
     }
-    this.setData({ location: getDefaultLocation() });
+    const location = getDefaultLocation();
+    this.setData({ location, locationCoord: coordText(location) });
   },
 
-  async save(location: WeatherLocation) {
+  async save(raw: WeatherLocation) {
+    const location: WeatherLocation = {
+      name: raw.name || "当前位置",
+      latitude: Number(raw.latitude),
+      longitude: Number(raw.longitude),
+    };
+    if (!Number.isFinite(location.latitude) || !Number.isFinite(location.longitude)) {
+      wx.showToast({ title: "定位数据异常，请重试", icon: "none" });
+      return;
+    }
     this.setData({ saving: true });
     try {
       setDefaultLocation(location);
       await api.updateLocation(location);
-      this.setData({ location });
+      this.setData({ location, locationCoord: coordText(location) });
       wx.showToast({ title: "位置已保存", icon: "success" });
     } catch (err) {
       wx.showToast({ title: (err as Error).message, icon: "none" });
@@ -71,3 +82,11 @@ Page({
     });
   },
 });
+
+function coordText(location: WeatherLocation | null): string {
+  if (!location) return "";
+  const lat = Number(location.latitude);
+  const lng = Number(location.longitude);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return "";
+  return `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+}
