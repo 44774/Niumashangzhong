@@ -65,6 +65,30 @@
   margin-top: 24rpx;
 }
 
+.subscribe-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18rpx 0;
+  border-bottom: 1rpx solid var(--wc-color-border-default);
+  font-size: 28rpx;
+}
+
+.subscribe-row:last-of-type {
+  border-bottom: none;
+}
+
+.subscribe-row-status {
+  color: var(--wc-color-brand-primary);
+  font-size: 26rpx;
+}
+
+.subscribe-empty {
+  margin-top: 20rpx;
+  color: var(--wc-color-text-tertiary);
+  font-size: 24rpx;
+}
+
 .subscribe-status {
   display: block;
   margin-top: 16rpx;

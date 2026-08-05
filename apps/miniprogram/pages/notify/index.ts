@@ -1,7 +1,11 @@
 import { SUBSCRIBE_TEMPLATE_IDS } from "../../config";
 import { api } from "../../services/api";
 import { getToken } from "../../stores/session";
-import type { NotificationPreferences } from "../../typings/api";
+import type {
+  NotificationPreferences,
+  NotificationSubscription,
+  SubscribeTemplateInfo,
+} from "../../typings/api";
 
 const REMINDER_CHOICES = [15, 30, 60, 120];
 
@@ -23,6 +27,9 @@ Page({
     })),
     saving: false,
     subscribeStatus: "",
+    subscribing: false,
+    subscribeTemplates: [] as SubscribeTemplateInfo[],
+    subscriptionStatus: {} as Record<string, string>,
   },
 
   onShow() {
@@ -45,16 +52,43 @@ Page({
 
   async load() {
     try {
-      const prefs = await api.notificationPreferences();
+      const [prefs, templates] = await Promise.all([
+        api.notificationPreferences(),
+        api.subscribeTemplates().catch(() => []),
+      ]);
       const reminderOptions = REMINDER_CHOICES.map((value) => ({
         label: `${value} 分钟`,
         value,
         checked: prefs.shiftReminders.includes(value),
       }));
-      this.setData({ prefs, reminderOptions });
+      this.setData({
+        prefs,
+        reminderOptions,
+        subscribeTemplates:
+          SUBSCRIBE_TEMPLATE_IDS.length > 0 && templates.length === 0
+            ? SUBSCRIBE_TEMPLATE_IDS.map((templateId, index) => ({
+                key: index === 0 ? "shift_reminder" : "weather_reminder",
+                templateId,
+                page: "/pages/calendar/index",
+                name: index === 0 ? "上班提醒" : "天气提醒",
+              }))
+            : templates,
+        subscriptionStatus: this.buildSubscriptionStatus(prefs.subscriptions ?? []),
+      });
     } catch (err) {
       wx.showToast({ title: (err as Error).message, icon: "none" });
     }
+  },
+
+  buildSubscriptionStatus(subscriptions: NotificationSubscription[]): Record<string, string> {
+    const map: Record<string, string> = {};
+    for (const sub of subscriptions) {
+      if (sub.status === "accepted") map[sub.templateId] = "已授权";
+      else if (sub.status === "rejected") map[sub.templateId] = "已拒绝";
+      else if (sub.status === "banned") map[sub.templateId] = "已被禁用";
+      else map[sub.templateId] = "状态未知";
+    }
+    return map;
   },
 
   toggleReminder(event: WechatMiniprogram.TouchEvent) {
@@ -101,24 +135,55 @@ Page({
     this.setData({ prefs: { ...this.data.prefs, quietHours } });
   },
 
-  subscribe() {
-    if (SUBSCRIBE_TEMPLATE_IDS.length === 0) {
+  async subscribe() {
+    const templates = this.data.subscribeTemplates;
+    if (templates.length === 0) {
       wx.showModal({
-        title: "开发模式",
-        content: "当前未配置微信订阅消息模板 ID。配置 WECHAT_APPID 与模板 ID 后即可接收真实订阅消息。",
+        title: "暂未配置模板",
+        content:
+          "当前未配置微信订阅消息模板 ID。请在微信公众平台添加订阅消息模板，并在云函数环境变量中配置后重新部署。",
         showCancel: false,
       });
       return;
     }
-    wx.requestSubscribeMessage({
-      tmplIds: SUBSCRIBE_TEMPLATE_IDS,
-      success: (res) => {
-        const accepted = Object.values(res).filter((v) => v === "accept").length;
-        this.setData({ subscribeStatus: `已授权 ${accepted} 个提醒模板` });
-      },
-      fail: () => {
-        this.setData({ subscribeStatus: "订阅授权未完成" });
-      },
+    if (this.data.subscribing) return;
+    this.setData({ subscribing: true, subscribeStatus: "" });
+    try {
+      const res = await this.requestSubscribe(templates.map((t) => t.templateId));
+      const subscriptions: NotificationSubscription[] = templates.map((t) => ({
+        key: t.key,
+        templateId: t.templateId,
+        status:
+          res[t.templateId] === "accept"
+            ? "accepted"
+            : res[t.templateId] === "reject"
+              ? "rejected"
+              : res[t.templateId] === "ban"
+                ? "banned"
+                : "unknown",
+        grantedAt: new Date().toISOString(),
+      }));
+      await api.saveSubscriptions(subscriptions);
+      const accepted = subscriptions.filter((s) => s.status === "accepted").length;
+      this.setData({
+        subscribeStatus: `已授权 ${accepted} 个提醒模板`,
+        subscriptionStatus: this.buildSubscriptionStatus(subscriptions),
+      });
+    } catch (err) {
+      this.setData({ subscribeStatus: "订阅授权未完成，请重试" });
+      wx.showToast({ title: (err as Error).message, icon: "none" });
+    } finally {
+      this.setData({ subscribing: false });
+    }
+  },
+
+  requestSubscribe(tmplIds: string[]): Promise<Record<string, string>> {
+    return new Promise((resolve, reject) => {
+      wx.requestSubscribeMessage({
+        tmplIds,
+        success: (res) => resolve(res as unknown as Record<string, string>),
+        fail: () => reject(new Error("订阅授权未完成")),
+      });
     });
   },
 

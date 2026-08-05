@@ -237,6 +237,22 @@ export interface NotificationPreferences {
   holidayOvertimeEnabled?: boolean;
   quietHours: { start: string; end: string } | null;
   channels: Record<string, boolean>;
+  /** 微信订阅消息授权结果（云模式返回；本地/HTTP 模式可为空） */
+  subscriptions?: NotificationSubscription[];
+}
+
+export interface SubscribeTemplateInfo {
+  key: "shift_reminder" | "weather_reminder" | string;
+  templateId: string;
+  page: string;
+  name: string;
+}
+
+export interface NotificationSubscription {
+  key: string;
+  templateId: string;
+  status: "accepted" | "rejected" | "banned" | "unknown";
+  grantedAt: string;
 }
 
 export interface SharePrivacyOptions {

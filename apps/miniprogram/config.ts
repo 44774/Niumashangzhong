@@ -10,7 +10,8 @@ export const CLOUD_FUNCTION = "api";
 // 本地开发指向本机 API；真机调试时改为局域网 IP 或 HTTPS 域名（仅 USE_CLOUDBASE=false 时使用）
 export const API_BASE = "http://127.0.0.1:3000/api/v1";
 
-// 微信订阅消息模板 ID（配置真实 AppID 后填写，开发模式为空）
+// 微信订阅消息模板 ID 兜底配置：留空时从云端 notify.templates 获取；
+// 仅当这里非空时优先使用（本地/HTTP 模式无云端模板时可用）
 export const SUBSCRIBE_TEMPLATE_IDS: string[] = [];
 
 export const DEFAULT_CITY = "深圳";

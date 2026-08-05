@@ -4,6 +4,8 @@ import type {
   ChangeRequest,
   ChangeRequestInput,
   NotificationPreferences,
+  NotificationSubscription,
+  SubscribeTemplateInfo,
   ScheduleCreateInput,
   ScheduleDetail,
   ScheduleInstance,
@@ -155,6 +157,14 @@ export const api = {
 
   async saveNotificationPreferences(prefs: NotificationPreferences): Promise<NotificationPreferences> {
     return ws<NotificationPreferences>("notify.save", { prefs });
+  },
+
+  async subscribeTemplates(): Promise<SubscribeTemplateInfo[]> {
+    return callCloud<SubscribeTemplateInfo[]>("notify.templates");
+  },
+
+  async saveSubscriptions(subscriptions: NotificationSubscription[]): Promise<{ saved: number }> {
+    return ws<{ saved: number }>("notify.subscribe", { subscriptions });
   },
 
   async createShareSnapshot(input: ShareSnapshotInput): Promise<ShareSnapshot> {

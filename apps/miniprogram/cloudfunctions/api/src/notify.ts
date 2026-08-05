@@ -1,6 +1,7 @@
 import { db, requireWorkspace } from "./db";
 import { docId, nowIso } from "./util";
 import { readHolidayRange } from "./holiday";
+import { getSubscribeTemplates } from "./subscribe-config";
 
 const DEFAULTS = {
   shiftReminders: [15],
@@ -18,6 +19,7 @@ export async function get(openid: string, payload: { workspaceId: string }) {
     const res = await db.collection("notificationPrefs").doc(docId([openid, payload.workspaceId])).get();
     if (res.data) {
       return {
+        ...DEFAULTS,
         shiftReminders: res.data.shiftReminders ?? DEFAULTS.shiftReminders,
         weatherEnabled: res.data.weatherEnabled ?? DEFAULTS.weatherEnabled,
         scheduleChangesEnabled:
@@ -26,12 +28,13 @@ export async function get(openid: string, payload: { workspaceId: string }) {
         holidayOvertimeEnabled: res.data.holidayOvertimeEnabled ?? DEFAULTS.holidayOvertimeEnabled,
         quietHours: res.data.quietHours ?? DEFAULTS.quietHours,
         channels: res.data.channels ?? DEFAULTS.channels,
+        subscriptions: res.data.subscriptions ?? [],
       };
     }
   } catch {
     // 不存在则返回默认值
   }
-  return { ...DEFAULTS };
+  return { ...DEFAULTS, subscriptions: [] };
 }
 
 export async function save(openid: string, payload: { workspaceId: string; prefs: any }) {
@@ -48,6 +51,7 @@ export async function save(openid: string, payload: { workspaceId: string; prefs
     holidayOvertimeEnabled: Boolean(prefs.holidayOvertimeEnabled ?? true),
     quietHours: prefs.quietHours ?? null,
     channels: prefs.channels ?? { wechat: true },
+    subscriptions: Array.isArray(prefs.subscriptions) ? prefs.subscriptions : [],
   };
   await db.collection("notificationPrefs").doc(docId([openid, payload.workspaceId])).set({
     data: {
@@ -58,6 +62,41 @@ export async function save(openid: string, payload: { workspaceId: string; prefs
     },
   });
   return saved;
+}
+
+export function templates() {
+  return getSubscribeTemplates().map((item) => ({
+    key: item.key,
+    templateId: item.templateId,
+    page: item.page,
+    name: item.name,
+  }));
+}
+
+export async function subscribe(
+  openid: string,
+  payload: { workspaceId: string; subscriptions: any[] },
+) {
+  await requireWorkspace(openid, payload.workspaceId);
+  const subscriptions = (Array.isArray(payload.subscriptions) ? payload.subscriptions : [])
+    .filter((s: any) => s && typeof s.templateId === "string")
+    .map((s: any) => ({
+      key: s.key ?? "",
+      templateId: s.templateId,
+      status: ["accepted", "rejected", "banned", "unknown"].includes(s.status)
+        ? s.status
+        : "unknown",
+      grantedAt: s.grantedAt ?? nowIso(),
+    }));
+  await db.collection("notificationPrefs").doc(docId([openid, payload.workspaceId])).set({
+    data: {
+      openid,
+      workspaceId: payload.workspaceId,
+      subscriptions,
+      updatedAt: nowIso(),
+    },
+  });
+  return { saved: subscriptions.length };
 }
 
 export async function rebuildJobs(openid: string, workspaceId: string, instance: any, prefs: any) {

@@ -51,6 +51,9 @@ export const api = {
   saveNotificationPreferences: (
     prefs: Parameters<typeof cloudApi.saveNotificationPreferences>[0],
   ) => current().saveNotificationPreferences(prefs),
+  subscribeTemplates: () => current().subscribeTemplates(),
+  saveSubscriptions: (subscriptions: Parameters<typeof cloudApi.saveSubscriptions>[0]) =>
+    current().saveSubscriptions(subscriptions),
   createShareSnapshot: (input: Parameters<typeof cloudApi.createShareSnapshot>[0]) =>
     current().createShareSnapshot(input),
   holidayRange: (from: string, to: string) => current().holidayRange(from, to),

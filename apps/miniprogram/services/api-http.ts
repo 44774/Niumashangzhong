@@ -3,6 +3,7 @@ import type {
   ChangeRequest,
   ChangeRequestInput,
   NotificationPreferences,
+  SubscribeTemplateInfo,
   ScheduleCreateInput,
   ScheduleDetail,
   ScheduleInstance,
@@ -119,6 +120,14 @@ export const api = {
 
   saveNotificationPreferences(prefs: NotificationPreferences): Promise<NotificationPreferences> {
     return request("/notification-preferences", { method: "PUT", data: prefs });
+  },
+
+  subscribeTemplates(): Promise<SubscribeTemplateInfo[]> {
+    return Promise.resolve([]);
+  },
+
+  saveSubscriptions(): Promise<{ saved: number }> {
+    return Promise.resolve({ saved: 0 });
   },
 
   createShareSnapshot(input: ShareSnapshotInput): Promise<ShareSnapshot> {

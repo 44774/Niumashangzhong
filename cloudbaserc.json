@@ -6,13 +6,21 @@
       "name": "api",
       "timeout": 20,
       "memorySize": 256,
-      "envVariables": {}
+      "envVariables": {
+        "SUBSCRIBE_SHIFT_TEMPLATE_ID": "",
+        "SUBSCRIBE_WEATHER_TEMPLATE_ID": "",
+        "SUBSCRIBE_MINIPROGRAM_STATE": "developer"
+      }
     },
     {
       "name": "dispatcher",
       "timeout": 10,
       "memorySize": 128,
-      "envVariables": {}
+      "envVariables": {
+        "SUBSCRIBE_SHIFT_TEMPLATE_ID": "",
+        "SUBSCRIBE_WEATHER_TEMPLATE_ID": "",
+        "SUBSCRIBE_MINIPROGRAM_STATE": "developer"
+      }
     }
   ]
 }

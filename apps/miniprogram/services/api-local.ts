@@ -5,6 +5,8 @@ import type {
   ChangeRequest,
   ChangeRequestInput,
   NotificationPreferences,
+  NotificationSubscription,
+  SubscribeTemplateInfo,
   ScheduleCreateInput,
   ScheduleDetail,
   ScheduleInstance,
@@ -572,7 +574,7 @@ export const api = {
   },
 
   async notificationPreferences(): Promise<NotificationPreferences> {
-    return read<NotificationPreferences>(LOCAL_PREFS_KEY, {
+    const prefs = read<NotificationPreferences>(LOCAL_PREFS_KEY, {
       shiftReminders: [15],
       weatherEnabled: true,
       scheduleChangesEnabled: true,
@@ -580,11 +582,27 @@ export const api = {
       quietHours: null,
       channels: { wechat: true },
     });
+    return {
+      ...prefs,
+      subscriptions: read<NotificationSubscription[]>("wc_local_subscriptions", []),
+    };
   },
 
   async saveNotificationPreferences(prefs: NotificationPreferences): Promise<NotificationPreferences> {
     write(LOCAL_PREFS_KEY, prefs);
-    return prefs;
+    return {
+      ...prefs,
+      subscriptions: read<NotificationSubscription[]>("wc_local_subscriptions", []),
+    };
+  },
+
+  async subscribeTemplates(): Promise<SubscribeTemplateInfo[]> {
+    return [];
+  },
+
+  async saveSubscriptions(subscriptions: NotificationSubscription[]): Promise<{ saved: number }> {
+    write("wc_local_subscriptions", subscriptions);
+    return { saved: subscriptions.length };
   },
 
   async createShareSnapshot(input: ShareSnapshotInput): Promise<ShareSnapshot> {

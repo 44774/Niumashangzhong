@@ -112,6 +112,12 @@ tcb fn deploy dispatcher   # 部署通知定时器
 - 登录恢复：启动时静默恢复已保存会话，云模式自动刷新用户信息，失败时保留本地缓存，不重复弹登录页。
 - 用户隐私协议：首次登录强制阅读并同意（需滑动到协议底部才能同意），不同意则无法使用；协议内容更新时把
   `apps/miniprogram/utils/privacy-agreement.ts` 的 `PRIVACY_AGREEMENT_VERSION` +1，老用户下次进入会自动再次确认。
+- 微信订阅消息：提醒页授权后，`dispatcher` 通过 `subscribeMessage.send` 真实下发上班/天气提醒。配置步骤：
+  在微信公众平台「订阅消息」中添加模板 → 把模板 ID 填入云函数环境变量 `SUBSCRIBE_SHIFT_TEMPLATE_ID`（上班提醒）
+  与 `SUBSCRIBE_WEATHER_TEMPLATE_ID`（天气提醒）→ 重新部署 `api` 与 `dispatcher` → 小程序「提醒」页点击「订阅提醒」。
+  一次性订阅消息发送后会失效，需再次订阅；开发环境用 `SUBSCRIBE_MINIPROGRAM_STATE=developer`，发布后改为 `formal`。
+  若所选模板字段不是 `thing1/time2/thing3`，需同步调整
+  `apps/miniprogram/cloudfunctions/dispatcher/src/index.ts` 的 `buildData`。
 - 节假日加班：节假日数据来自 timor.tech 年度接口（2019 年起），云端与本地都会缓存；法定节假日上班自动标注「加班」，日历/周视图/详情/海报均展示，上班提醒可附带加班标注（通知设置可关闭）。
 - 海报：今日保持列表卡样式；本周/本月/自定义多日改为日历网格样式；自定义起止日期不限长度，跨度超过 92 天会弹窗确认。
 - 多排班表：可创建多个命名排班表（循环规则），在「我的 → 排班表管理」或日历页「排班表」中新增、切换、删除；切换后日历只显示当前排班表生成的班次与手动排班。临时改班保存后详情页会自动刷新，不再需要手动返回重进。

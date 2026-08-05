@@ -81,6 +81,10 @@ exports.main = async (event: any) => {
         return ok(await notify.get(openid, payload));
       case "notify.save":
         return ok(await notify.save(openid, payload));
+      case "notify.templates":
+        return ok(notify.templates());
+      case "notify.subscribe":
+        return ok(await notify.subscribe(openid, payload));
       case "share.create":
         return ok(await share.create(openid, payload));
       default:

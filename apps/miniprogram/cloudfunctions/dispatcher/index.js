@@ -25,16 +25,83 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
 // apps/miniprogram/cloudfunctions/dispatcher/src/index.ts
 var import_wx_server_sdk = __toESM(require("wx-server-sdk"));
 import_wx_server_sdk.default.init({ env: import_wx_server_sdk.default.DYNAMIC_CURRENT_ENV });
+var SHIFT_TEMPLATE_ID = process.env.SUBSCRIBE_SHIFT_TEMPLATE_ID || "";
+var WEATHER_TEMPLATE_ID = process.env.SUBSCRIBE_WEATHER_TEMPLATE_ID || "";
+var MINIPROGRAM_STATE = process.env.SUBSCRIBE_MINIPROGRAM_STATE || "formal";
+var PAGE = "pages/calendar/index";
+function truncate(value, max = 20) {
+  const text = String(value ?? "");
+  return text.length > max ? text.slice(0, max) : text;
+}
+function templateFor(job) {
+  if (job.type === "shift_reminder") {
+    return { templateId: SHIFT_TEMPLATE_ID, name: "\u4E0A\u73ED\u63D0\u9192" };
+  }
+  if (job.type === "weather_reminder") {
+    return { templateId: WEATHER_TEMPLATE_ID, name: "\u5929\u6C14\u63D0\u9192" };
+  }
+  return null;
+}
+function buildData(job) {
+  const payload = job.payload ?? {};
+  const dateTime = `${payload.businessDate ?? ""} ${payload.startTime ?? ""}`.trim();
+  const overtime = payload.overtime ? "\uFF08\u52A0\u73ED\uFF09" : "";
+  if (job.type === "shift_reminder") {
+    return {
+      thing1: { value: truncate(payload.shiftName || "\u4E0A\u73ED\u63D0\u9192") },
+      time2: { value: truncate(dateTime, 20) },
+      thing3: {
+        value: truncate(`\u63D0\u524D${payload.reminderMinutes ?? 15}\u5206\u949F\u4E0A\u73ED${overtime}`, 20)
+      }
+    };
+  }
+  return {
+    thing1: { value: truncate("\u4ECA\u65E5\u5929\u6C14\u63D0\u9192") },
+    time2: { value: truncate(dateTime, 20) },
+    thing3: { value: truncate(`\u73ED\u6B21 ${payload.shiftName ?? ""}${overtime}`, 20) }
+  };
+}
+async function sendJob(job, db) {
+  const tpl = templateFor(job);
+  const now = (/* @__PURE__ */ new Date()).toISOString();
+  if (!tpl || !tpl.templateId) {
+    await db.collection("notificationJobs").doc(job._id).update({
+      data: { status: "failed", errorMessage: "\u8BA2\u9605\u6D88\u606F\u6A21\u677F\u672A\u914D\u7F6E", processedAt: now }
+    });
+    return false;
+  }
+  try {
+    await import_wx_server_sdk.default.openapi.subscribeMessage.send({
+      touser: job.openid,
+      templateId: tpl.templateId,
+      page: PAGE,
+      data: buildData(job),
+      miniprogramState: MINIPROGRAM_STATE
+    });
+    await db.collection("notificationJobs").doc(job._id).update({
+      data: { status: "sent", sentAt: now, processedAt: now }
+    });
+    return true;
+  } catch (err) {
+    const message = (err == null ? void 0 : err.errMsg) || (err == null ? void 0 : err.message) || String(err);
+    console.error("[notify:subscribe:error]", job._id, message);
+    await db.collection("notificationJobs").doc(job._id).update({
+      data: { status: "failed", errorMessage: message, processedAt: now }
+    });
+    return false;
+  }
+}
 exports.main = async () => {
   const db = import_wx_server_sdk.default.database();
   const _ = db.command;
   const now = (/* @__PURE__ */ new Date()).toISOString();
   const due = await db.collection("notificationJobs").where({ status: "pending", triggerAt: _.lte(now) }).limit(20).get();
   let processed = 0;
+  let sent = 0;
   for (const job of due.data) {
-    console.log("[notify:dev]", job.type, JSON.stringify(job.payload ?? {}));
-    await db.collection("notificationJobs").doc(job._id).update({ data: { status: "sent", sentAt: now } });
+    console.log("[notify:send]", job.type, JSON.stringify(job.payload ?? {}));
+    if (await sendJob(job, db)) sent += 1;
     processed += 1;
   }
-  return { processed };
+  return { processed, sent };
 };

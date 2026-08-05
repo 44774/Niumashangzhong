@@ -52,8 +52,20 @@
 
   <view class="card">
     <text class="title-card">微信订阅消息</text>
-    <text class="card-desc">开发模式无需订阅；配置真实模板 ID 后，点击下方按钮授权接收提醒</text>
-    <button class="btn-secondary btn-block subscribe-btn" bindtap="subscribe">订阅提醒</button>
+    <text class="card-desc">授权后可在上班前收到提醒；一次性订阅消息在发送后需要重新订阅</text>
+    <view wx:for="{{subscribeTemplates}}" wx:key="key" class="subscribe-row">
+      <text>{{item.name}}</text>
+      <text class="subscribe-row-status">{{subscriptionStatus[item.templateId] || '未授权'}}</text>
+    </view>
+    <view wx:if="{{subscribeTemplates.length === 0}}" class="subscribe-empty">
+      暂未配置订阅消息模板，配置模板 ID 后即可订阅
+    </view>
+    <button
+      class="btn-secondary btn-block subscribe-btn"
+      loading="{{subscribing}}"
+      disabled="{{subscribeTemplates.length === 0}}"
+      bindtap="subscribe"
+    >订阅提醒</button>
     <text class="text-tertiary subscribe-status">{{subscribeStatus}}</text>
   </view>
 

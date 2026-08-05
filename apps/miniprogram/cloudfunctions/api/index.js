@@ -794,6 +794,25 @@ async function sync(openid, payload) {
   return { synced };
 }
 
+// apps/miniprogram/cloudfunctions/api/src/subscribe-config.ts
+function getSubscribeTemplates() {
+  const list4 = [
+    {
+      key: "shift_reminder",
+      templateId: process.env.SUBSCRIBE_SHIFT_TEMPLATE_ID || "",
+      page: "pages/calendar/index",
+      name: "\u4E0A\u73ED\u63D0\u9192"
+    },
+    {
+      key: "weather_reminder",
+      templateId: process.env.SUBSCRIBE_WEATHER_TEMPLATE_ID || "",
+      page: "pages/calendar/index",
+      name: "\u5929\u6C14\u63D0\u9192"
+    }
+  ];
+  return list4.filter((item) => item.templateId.length > 0);
+}
+
 // apps/miniprogram/cloudfunctions/api/src/notify.ts
 var DEFAULTS = {
   shiftReminders: [15],
@@ -810,18 +829,20 @@ async function get2(openid, payload) {
     const res = await db.collection("notificationPrefs").doc(docId([openid, payload.workspaceId])).get();
     if (res.data) {
       return {
+        ...DEFAULTS,
         shiftReminders: res.data.shiftReminders ?? DEFAULTS.shiftReminders,
         weatherEnabled: res.data.weatherEnabled ?? DEFAULTS.weatherEnabled,
         scheduleChangesEnabled: res.data.scheduleChangesEnabled ?? DEFAULTS.scheduleChangesEnabled,
         approvalEnabled: res.data.approvalEnabled ?? DEFAULTS.approvalEnabled,
         holidayOvertimeEnabled: res.data.holidayOvertimeEnabled ?? DEFAULTS.holidayOvertimeEnabled,
         quietHours: res.data.quietHours ?? DEFAULTS.quietHours,
-        channels: res.data.channels ?? DEFAULTS.channels
+        channels: res.data.channels ?? DEFAULTS.channels,
+        subscriptions: res.data.subscriptions ?? []
       };
     }
   } catch {
   }
-  return { ...DEFAULTS };
+  return { ...DEFAULTS, subscriptions: [] };
 }
 async function save(openid, payload) {
   await requireWorkspace(openid, payload.workspaceId);
@@ -834,7 +855,8 @@ async function save(openid, payload) {
     approvalEnabled: Boolean(prefs.approvalEnabled ?? true),
     holidayOvertimeEnabled: Boolean(prefs.holidayOvertimeEnabled ?? true),
     quietHours: prefs.quietHours ?? null,
-    channels: prefs.channels ?? { wechat: true }
+    channels: prefs.channels ?? { wechat: true },
+    subscriptions: Array.isArray(prefs.subscriptions) ? prefs.subscriptions : []
   };
   await db.collection("notificationPrefs").doc(docId([openid, payload.workspaceId])).set({
     data: {
@@ -845,6 +867,32 @@ async function save(openid, payload) {
     }
   });
   return saved;
+}
+function templates() {
+  return getSubscribeTemplates().map((item) => ({
+    key: item.key,
+    templateId: item.templateId,
+    page: item.page,
+    name: item.name
+  }));
+}
+async function subscribe(openid, payload) {
+  await requireWorkspace(openid, payload.workspaceId);
+  const subscriptions = (Array.isArray(payload.subscriptions) ? payload.subscriptions : []).filter((s) => s && typeof s.templateId === "string").map((s) => ({
+    key: s.key ?? "",
+    templateId: s.templateId,
+    status: ["accepted", "rejected", "banned", "unknown"].includes(s.status) ? s.status : "unknown",
+    grantedAt: s.grantedAt ?? nowIso()
+  }));
+  await db.collection("notificationPrefs").doc(docId([openid, payload.workspaceId])).set({
+    data: {
+      openid,
+      workspaceId: payload.workspaceId,
+      subscriptions,
+      updatedAt: nowIso()
+    }
+  });
+  return { saved: subscriptions.length };
 }
 async function rebuildJobs(openid, workspaceId, instance, prefs) {
   var _a, _b, _c, _d;
@@ -1525,6 +1573,10 @@ exports.main = async (event) => {
         return ok(await get2(openid, payload));
       case "notify.save":
         return ok(await save(openid, payload));
+      case "notify.templates":
+        return ok(templates());
+      case "notify.subscribe":
+        return ok(await subscribe(openid, payload));
       case "share.create":
         return ok(await create4(openid, payload));
       default:
