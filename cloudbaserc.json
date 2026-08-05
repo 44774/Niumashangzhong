@@ -9,7 +9,7 @@
       "envVariables": {
         "SUBSCRIBE_SHIFT_TEMPLATE_ID": "PPRLh5y2F-_DVDDB-fpMxD5UKcnEqs1FzsZgWk4NZ6Y",
         "SUBSCRIBE_WEATHER_TEMPLATE_ID": "",
-        "SUBSCRIBE_MINIPROGRAM_STATE": "developer"
+        "SUBSCRIBE_MINIPROGRAM_STATE": "formal"
       }
     },
     {
@@ -19,7 +19,7 @@
       "envVariables": {
         "SUBSCRIBE_SHIFT_TEMPLATE_ID": "PPRLh5y2F-_DVDDB-fpMxD5UKcnEqs1FzsZgWk4NZ6Y",
         "SUBSCRIBE_WEATHER_TEMPLATE_ID": "",
-        "SUBSCRIBE_MINIPROGRAM_STATE": "developer"
+        "SUBSCRIBE_MINIPROGRAM_STATE": "formal"
       },
       "triggers": [
         {
