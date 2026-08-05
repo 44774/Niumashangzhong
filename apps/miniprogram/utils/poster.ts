@@ -1,5 +1,6 @@
 import type { ShareSnapshot } from "../typings/api";
 import { rangeDaysCount } from "./share-range";
+import { APP_NAME } from "./version";
 
 const WIDTH = 1080;
 const ROW_HEIGHT = 150;
@@ -109,7 +110,7 @@ export function drawPoster(
       ctx.fillStyle = "#FFFFFF";
       ctx.font = "bold 64px sans-serif";
       ctx.textAlign = "left";
-      ctx.fillText("工作日历 · 我的班表", 64, 110);
+      ctx.fillText(`${APP_NAME} · 我的班表`, 64, 110);
       ctx.font = "36px sans-serif";
       ctx.fillStyle = "rgba(255,255,255,0.9)";
       ctx.fillText(`${snapshot.rangeStart} 至 ${snapshot.rangeEnd}`, 64, 180);
@@ -167,7 +168,7 @@ export function drawPoster(
       ctx.font = "28px sans-serif";
       ctx.textAlign = "center";
       ctx.fillText("分享快照不含手机号、精确地址与内部备注", WIDTH / 2, height - 80);
-      ctx.fillText("由“工作日历”小程序生成", WIDTH / 2, height - 34);
+      ctx.fillText(`由“${APP_NAME}”小程序生成`, WIDTH / 2, height - 34);
 
       wx.canvasToTempFilePath({
         canvas,
@@ -208,7 +209,7 @@ export function drawCalendarPoster(
       ctx.fillStyle = "#FFFFFF";
       ctx.font = "bold 64px sans-serif";
       ctx.textAlign = "left";
-      ctx.fillText("工作日历 · 我的班表", 64, 90);
+      ctx.fillText(`${APP_NAME} · 我的班表`, 64, 90);
       ctx.font = "36px sans-serif";
       ctx.fillStyle = "rgba(255,255,255,0.9)";
       ctx.fillText(`${snapshot.rangeStart} 至 ${snapshot.rangeEnd}`, 64, 160);
@@ -297,7 +298,7 @@ export function drawCalendarPoster(
       ctx.font = "26px sans-serif";
       ctx.textAlign = "center";
       ctx.fillText("分享快照不含手机号、精确地址与内部备注", WIDTH / 2, height - 90);
-      ctx.fillText("由“工作日历”小程序生成", WIDTH / 2, height - 46);
+      ctx.fillText(`由“${APP_NAME}”小程序生成`, WIDTH / 2, height - 46);
 
       wx.canvasToTempFilePath({
         canvas,

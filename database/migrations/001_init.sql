@@ -1,4 +1,4 @@
--- 工作日历核心数据库草案（PostgreSQL）
+-- 牛马上钟核心数据库草案（PostgreSQL）
 -- 生产实现应通过迁移工具管理，并按所选 ORM 调整类型映射。
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto;

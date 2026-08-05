@@ -42,5 +42,5 @@
   </view>
 
   <button class="btn-secondary btn-block logout-btn" bindtap="logout">退出登录</button>
-  <text class="text-tertiary version">工作日历 v0.1.0 · 个人模式</text>
+  <text class="text-tertiary version">{{appName}} {{version}} · 个人模式</text>
 </view>

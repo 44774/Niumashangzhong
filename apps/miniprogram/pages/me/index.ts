@@ -1,11 +1,14 @@
 import { api } from "../../services/api";
 import { clearSession, getToken, getUser, getWorkspace } from "../../stores/session";
+import { APP_NAME, APP_VERSION } from "../../utils/version";
 
 Page({
   data: {
     user: { displayName: "", id: "" },
     workspace: { name: "", id: "" },
     avatarText: "",
+    appName: APP_NAME,
+    version: APP_VERSION,
   },
 
   onShow() {
@@ -67,18 +70,13 @@ Page({
   },
 
   showAbout() {
-    wx.showModal({
-      title: "关于工作日历",
-      content:
-        "个人模式第一版：班次模板、月历/周视图、排班详情、临时改班、提醒设置与分享海报。分享默认不包含手机号、精确地址与内部备注。",
-      showCancel: false,
-    });
+    wx.navigateTo({ url: "/pages/about/index" });
   },
 
   logout() {
     wx.showModal({
       title: "退出登录",
-      content: "退出后本地数据将被清除，排班数据仍保存在服务器。",
+      content: "退出后需要重新登录；云模式数据仍在云端，本地模式数据仍保留在本机。",
       success: (res) => {
         if (!res.confirm) return;
         clearSession();

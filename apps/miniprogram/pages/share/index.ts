@@ -22,6 +22,7 @@ import { isOvertime } from "../../utils/holiday";
 import { loadRange } from "../../services/schedule-view";
 import { getWeatherCached } from "../../services/weather-cache";
 import { rangeDaysCount } from "../../utils/share-range";
+import { APP_NAME } from "../../utils/version";
 
 const PRIVACY_KEY = "wc_share_privacy";
 
@@ -274,7 +275,7 @@ Page({
 
   onShareAppMessage() {
     return {
-      title: "我的班表（工作日历）",
+      title: `我的班表（${APP_NAME}）`,
       path: "/pages/calendar/index",
       imageUrl: this.data.posterPath || undefined,
     };

@@ -1,8 +1,8 @@
 {
-  "name": "work-calendar",
+  "name": "niuma-shangzhong",
   "version": "0.1.0",
   "private": true,
-  "description": "工作日历微信小程序版（第一轮）",
+  "description": "牛马上钟微信小程序",
   "scripts": {
     "gen:tokens": "node scripts/gen-tokens.mjs",
     "sync:types": "node scripts/sync-miniprogram-types.mjs",

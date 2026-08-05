@@ -32,7 +32,7 @@ export async function buildApp({ db, config }: BuildAppOptions): Promise<Fastify
   await app.register(jwt, { secret: config.jwtSecret });
   await app.register(swagger, {
     openapi: {
-      info: { title: "Work Calendar API", version: "1.0.0" },
+      info: { title: "牛马上钟 API", version: "1.0.0" },
       servers: [{ url: "/api/v1" }],
     },
   });

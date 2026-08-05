@@ -1,7 +1,7 @@
 {
   "name": "workcal-api",
   "version": "1.0.0",
-  "description": "工作日历 CloudBase 云函数（个人模式核心链路）",
+  "description": "牛马上钟 CloudBase 云函数（个人模式核心链路）",
   "main": "index.js",
   "dependencies": {
     "wx-server-sdk": "~3.0.1"

@@ -4,8 +4,8 @@
   "libVersion": "3.8.12",
   "miniprogramRoot": "./",
   "cloudfunctionRoot": "cloudfunctions/",
-  "projectname": "work-calendar-miniprogram",
-  "description": "工作日历微信小程序（个人模式第一轮）",
+  "projectname": "牛马上钟",
+  "description": "牛马上钟微信小程序",
   "setting": {
     "useCompilerPlugins": [
       "typescript"

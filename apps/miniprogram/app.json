@@ -8,6 +8,7 @@
     "pages/schedule-detail/index",
     "pages/schedule-change/index",
     "pages/share/index",
+    "pages/about/index",
     "pages/shift-manage/index",
     "pages/change-records/index",
     "pages/share-settings/index",
@@ -24,7 +25,7 @@
   "window": {
     "navigationBarBackgroundColor": "#F5F9FF",
     "navigationBarTextStyle": "black",
-    "navigationBarTitleText": "工作日历",
+    "navigationBarTitleText": "牛马上钟",
     "backgroundColor": "#F5F9FF",
     "backgroundTextStyle": "light"
   },

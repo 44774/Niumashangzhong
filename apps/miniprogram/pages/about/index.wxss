@@ -1,0 +1,60 @@
+.brand-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 56rpx 32rpx 40rpx;
+  margin-top: 24rpx;
+}
+
+.brand-logo {
+  width: 160rpx;
+  height: 160rpx;
+  border-radius: 32rpx;
+  margin-bottom: 24rpx;
+  background: #ffffff;
+}
+
+.brand-name {
+  font-size: 40rpx;
+  font-weight: 700;
+}
+
+.brand-version {
+  color: var(--wc-color-text-tertiary);
+  font-size: 24rpx;
+  margin-top: 8rpx;
+}
+
+.brand-desc {
+  color: var(--wc-color-text-secondary);
+  font-size: 26rpx;
+  margin-top: 16rpx;
+}
+
+.section {
+  margin-top: 24rpx;
+  padding: 32rpx 28rpx;
+}
+
+.body {
+  display: block;
+  color: var(--wc-color-text-secondary);
+  font-size: 28rpx;
+  line-height: 1.7;
+  margin-top: 16rpx;
+}
+
+.line {
+  color: var(--wc-color-text-secondary);
+  font-size: 26rpx;
+  line-height: 1.7;
+  margin-top: 14rpx;
+}
+
+.footer {
+  display: block;
+  text-align: center;
+  margin: 32rpx 0 24rpx;
+  color: var(--wc-color-text-tertiary);
+  font-size: 22rpx;
+}

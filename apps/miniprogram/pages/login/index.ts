@@ -1,6 +1,7 @@
 import { api, loginLocal } from "../../services/api";
 import { USE_CLOUDBASE } from "../../config";
 import { setSession } from "../../stores/session";
+import { APP_NAME } from "../../utils/version";
 
 function wxLoginCode(): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -15,6 +16,7 @@ Page({
   data: {
     displayName: "",
     loading: false,
+    appName: APP_NAME,
   },
 
   onInput(event: WechatMiniprogram.Input) {

@@ -1,4 +1,4 @@
-# AGENTS.md — 工作日历仓库约束
+# AGENTS.md — 牛马上钟仓库约束
 
 产品规范包位于 `docs/product-kit/`。开发前必须完整阅读：
 
